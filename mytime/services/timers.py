@@ -39,6 +39,7 @@ def start_timer(session: Session, entry_id: int, at: datetime) -> TimeEntry:
 
 def stop_timer(session: Session, entry_id: int, at: datetime) -> TimeEntry:
     e = session.get(TimeEntry, entry_id)
+    guards.ensure_unlocked(e)
     if e.running_since is not None:
         e.seconds = live_elapsed(e, at)
         e.running_since = None
