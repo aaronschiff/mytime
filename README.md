@@ -121,6 +121,10 @@ deploy/
   mytime.service             # systemd unit file
 ```
 
+## Repository
+
+https://github.com/aaronschiff/mytime (private)
+
 ## Design spec
 
 Full product design and API spec:  

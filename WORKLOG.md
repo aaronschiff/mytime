@@ -2,6 +2,19 @@
 
 ## 2026-06-25
 
+**What we worked on:** Full 10-task build executed via subagent-driven development; pushed to GitHub.
+
+- Executed all 10 tasks from `docs/superpowers/plans/2026-06-25-mytime.md` using parallel subagents with per-task review gates.
+- One Critical finding caught during review (Task 7): `stop_timer` was missing `guards.ensure_unlocked` — patched in a fix commit before marking task complete.
+- Final Opus whole-branch review returned "Ready to merge" with no Critical or Important issues.
+- Pushed to private GitHub repo: https://github.com/aaronschiff/mytime
+- 43 tests passing; 3 pre-existing deprecation warnings from FastAPI `on_event` (plan-mandated, minor).
+- Minor deferred: replace `@app.on_event("startup")` with lifespan handler; remove dead `try/except` around filter registration in `main.py`; add None-guard on task_type mutations; add HTTP-layer test for locked-entry rejection.
+
+---
+
+## 2026-06-25
+
 **What we worked on:** Task 10 — deployment & project docs (final build).
 
 All 9 code tasks now complete. The app is fully working with:
