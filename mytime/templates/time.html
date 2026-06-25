@@ -23,7 +23,7 @@
       <td>{{ names[e.project_id] }}</td>
       <td>{{ task_names[e.task_type_id] }}</td>
       <td>{{ e.seconds | hm }}</td>
-      <td>{{ (e.notes or "")[:50] }}{{ "…" if e.notes and e.notes|length > 50 }}</td>
+      <td>{{ (e.notes or "") | truncate_words }}</td>
       <td>
         {% if e.invoice_id %}<span class="muted">invoiced</span>
         {% elif project_statuses.get(e.project_id) == 'active' %}

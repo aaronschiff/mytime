@@ -2,6 +2,27 @@
 
 ## 2026-06-25
 
+**What we worked on:** Third user testing pass — all TESTING-3.md items resolved; 53 tests still passing.
+
+- **Bug fixes:**
+  - Timer rounding: `fmtHms` in `timer-tick.js` changed from `Math.floor` to `Math.round` for minute calculation, matching server-side `fmt_hm(seconds+30)//60` rounding — prevented "one minute less" flash on start.
+  - Archived projects: "Edit project" link replaced by conditional logic in `project_detail.html`; active shows Edit, archived shows Unarchive button. "New time entry" link also hidden for archived projects.
+  - Client + project name uniqueness: `_check_duplicate()` helper added to `services/projects.py`, called from both `create_project` and `update_project`; raises `ValueError` which the router catches and re-renders the form with a red error message. `UniqueConstraint("client_name", "name")` added to `Project` model (enforced for new DBs).
+- **Format helpers:** Added `money_cents(amount, symbol)` (2dp with commas) and `truncate_words(text, n=3)` to `format.py`; both registered as Jinja2 filters in `templating.py`.
+- **CSS:** Normalised button/input/select to consistent `height:2rem; border-radius:4px; border:1px solid var(--line)`; plain buttons get `background:#f8fafc`. Added `margin-top:.25rem` for inputs/selects/textareas that are direct children of labels. Added `<kbd>` element styling.
+- **10-hour confirmation:** `parseDurationSecs()` helper added to JS in both `time_entry_form.html` and `today.html`; submitting ≥36000 seconds shows confirm dialog before proceeding. Today inline set-time logic refactored into `submitElapsedEdit()` function shared by both Enter-key and blur handlers.
+- **Notes truncation:** `truncate_words` filter replaces 50-char slice in `time.html` and `_project_detail_body.html`; now cuts at 3 words with ` …`.
+- **Invoice build view:** GST and total-incl-GST moved from separate `<div>` into table `<tfoot>` rows. JS `fmtMoney` updated to show 2dp cents. Server-side rate/already-invoiced/budget-remaining use `money_cents` filter.
+- **Invoice view:** Amount column right-aligned; all money values use `money_cents` filter (shows cents).
+- **Today view:** `names` dict in `routers/today.py` changed to project name only (no `client_name —` prefix). Keyboard shortcut reminder `<p>` added above timer list.
+- **Projects view:** Budget/Invoiced/Uninvoiced columns right-aligned; "Started" column added (`created_at | date`). `list_projects()` in service gains `order_by_date` bool; projects router passes `True` → reverse-chronological.
+- **Project detail view:** Invoice total in invoice list uses `money_cents`.
+- **Client detail view:** Budget/Invoiced/Uninvoiced right-aligned; "Started" column added. Router sort changed to `Project.status.asc(), Project.created_at.desc()` ("active" < "archived" alphabetically so active rows come first).
+
+---
+
+## 2026-06-25
+
 **What we worked on:** Clarification fix — project list columns corrected; budget/invoiced/uninvoiced added to project and client detail lists.
 
 - TESTING-2.md item "Remove the rate column, budget, invoiced and uninvoiced total columns" was misread; intent was to *remove rate* and *add* budget/invoiced/uninvoiced.

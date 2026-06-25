@@ -49,7 +49,9 @@ def list_page(request: Request, session: Session = Depends(get_session)):
 def detail_page(client_id: int, request: Request, session: Session = Depends(get_session)):
     client = clients_service.get_client(session, client_id)
     client_projects = list(session.scalars(
-        select(Project).where(Project.client_id == client_id).order_by(Project.name)
+        select(Project)
+        .where(Project.client_id == client_id)
+        .order_by(Project.status.asc(), Project.created_at.desc())
     ))
     summaries = {p.id: budget.project_summary(session, p) for p in client_projects}
     return templates.TemplateResponse(request, "client_detail.html", {

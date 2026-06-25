@@ -6,7 +6,17 @@
   {% if project.budget is not none %}· Budget {{ project.budget | money(currency) }}{% endif %}
   · {{ project.status }}</p>
 {% if project.description %}<p>{{ project.description }}</p>{% endif %}
+{% if project.status == 'active' %}
 <p><a href="/projects/{{ project.id }}/edit">Edit project</a></p>
+{% else %}
+<p>
+  <form method="post" action="/projects/{{ project.id }}/status" style="display:inline">
+    <input type="hidden" name="status" value="active">
+    <input type="hidden" name="from_page" value="/projects/{{ project.id }}">
+    <button>Unarchive</button>
+  </form>
+</p>
+{% endif %}
 {% if summary %}<div class="card">{% include "_budget_bar.html" %}</div>{% endif %}
 
 <section id="detail-body">{% include "_project_detail_body.html" %}</section>

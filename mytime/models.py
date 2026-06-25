@@ -41,6 +41,7 @@ class TaskType(Base):
 
 class Project(Base):
     __tablename__ = "project"
+    __table_args__ = (UniqueConstraint("client_name", "name", name="uq_project_client_name"),)
     id: Mapped[int] = mapped_column(primary_key=True)
     client_name: Mapped[str] = mapped_column(String(200))
     name: Mapped[str] = mapped_column(String(200))

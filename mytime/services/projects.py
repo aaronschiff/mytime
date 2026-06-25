@@ -5,11 +5,14 @@ from sqlalchemy.orm import Session
 from mytime.models import Project
 
 
-def list_projects(session: Session, status: str | None = None) -> list[Project]:
+def list_projects(session: Session, status: str | None = None, order_by_date: bool = False) -> list[Project]:
     stmt = select(Project)
     if status is not None:
         stmt = stmt.where(Project.status == status)
-    stmt = stmt.order_by(Project.client_name, Project.name)
+    if order_by_date:
+        stmt = stmt.order_by(Project.created_at.desc())
+    else:
+        stmt = stmt.order_by(Project.client_name, Project.name)
     return list(session.scalars(stmt))
 
 
@@ -17,10 +20,19 @@ def get_project(session: Session, project_id: int) -> Project:
     return session.get(Project, project_id)
 
 
+def _check_duplicate(session: Session, client_name: str, name: str, exclude_id: int | None = None) -> None:
+    stmt = select(Project).where(Project.client_name == client_name, Project.name == name)
+    if exclude_id is not None:
+        stmt = stmt.where(Project.id != exclude_id)
+    if session.scalar(stmt):
+        raise ValueError(f"A project named \"{name}\" already exists for client \"{client_name}\".")
+
+
 def create_project(session, client_name, name, hourly_rate, budget, description,
                    gst_enabled: bool = False, gst_rate=None) -> Project:
     from mytime.services.clients import find_or_create as _find_or_create_client
     stripped = client_name.strip()
+    _check_duplicate(session, stripped, name.strip())
     client = _find_or_create_client(session, stripped) if stripped else None
     p = Project(
         client_name=stripped,
@@ -43,6 +55,7 @@ def update_project(session, project_id, client_name, name, hourly_rate, budget, 
     from mytime.services.clients import find_or_create as _find_or_create_client
     p = get_project(session, project_id)
     stripped = client_name.strip()
+    _check_duplicate(session, stripped, name.strip(), exclude_id=project_id)
     client = _find_or_create_client(session, stripped) if stripped else None
     p.client_name = stripped
     p.name = name.strip()

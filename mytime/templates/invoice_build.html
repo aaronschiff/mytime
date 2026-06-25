@@ -34,22 +34,26 @@
     </tbody>
     <tfoot>
       <tr>
-        <th>Total</th>
+        <th>{% if project.gst_enabled and project.gst_rate %}Subtotal{% else %}Total{% endif %}</th>
         <th>{{ total_tracked_seconds | hm }}</th>
         <th id="total-inv-hm">{{ total_tracked_seconds | hm }}</th>
         <th id="total-amount">—</th>
       </tr>
+      {% if project.gst_enabled and project.gst_rate %}
+      <tr>
+        <th colspan="3">GST ({{ project.gst_rate }}%)</th>
+        <th id="gst-amount">—</th>
+      </tr>
+      <tr>
+        <th colspan="3"><strong>Total incl. GST</strong></th>
+        <th id="total-incl-gst">—</th>
+      </tr>
+      {% endif %}
     </tfoot>
   </table>
-  {% if project.gst_enabled and project.gst_rate %}
-  <div id="gst-summary" class="muted" style="margin-top:.5rem">
-    <p>GST ({{ project.gst_rate }}%): <span id="gst-amount">—</span></p>
-    <p><strong>Total incl. GST: <span id="total-incl-gst">—</span></strong></p>
-  </div>
-  {% endif %}
-  <p class="muted">Rate {{ project.hourly_rate | money(currency) }}/h.
-    Previously invoiced: {{ already_invoiced | money(currency) }}.
-    {% if budget_remaining is not none %}Budget remaining: {{ budget_remaining | money(currency) }}.{% endif %}
+  <p class="muted">Rate {{ project.hourly_rate | money_cents(currency) }}/h.
+    Previously invoiced: {{ already_invoiced | money_cents(currency) }}.
+    {% if budget_remaining is not none %}Budget remaining: {{ budget_remaining | money_cents(currency) }}.{% endif %}
     Leftover tracked time is written off.
   </p>
   <button type="submit" class="btn-save" onclick="return confirm('Create invoice and lock these entries?')">Create invoice</button>
@@ -72,7 +76,7 @@
     return h + m / 60;
   }
   function fmtMoney(n, sym) {
-    return sym + Math.round(n).toLocaleString();
+    return sym + n.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
   }
   function fmtHM(totalMins) {
     var h = Math.floor(totalMins / 60);

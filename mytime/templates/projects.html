@@ -8,16 +8,17 @@
   <a href="/projects/new">+ New project</a>
 </p>
 <table>
-  <thead><tr><th>Client</th><th>Project</th><th>Budget</th><th>Invoiced</th><th>Uninvoiced</th><th>Status</th><th></th></tr></thead>
+  <thead><tr><th>Client</th><th>Project</th><th style="text-align:right">Budget</th><th style="text-align:right">Invoiced</th><th style="text-align:right">Uninvoiced</th><th>Started</th><th>Status</th><th></th></tr></thead>
   <tbody>
   {% for p in projects %}
     {% set s = summaries[p.id] %}
     <tr>
       <td>{{ p.client_name }}</td>
       <td><a href="/projects/{{ p.id }}">{{ p.name }}</a></td>
-      <td>{{ p.budget | money(currency) if p.budget is not none else "—" }}</td>
-      <td>{{ s.invoiced_value | money(currency) }}</td>
-      <td>{{ s.uninvoiced_value | money(currency) }}</td>
+      <td style="text-align:right">{{ p.budget | money(currency) if p.budget is not none else "—" }}</td>
+      <td style="text-align:right">{{ s.invoiced_value | money(currency) }}</td>
+      <td style="text-align:right">{{ s.uninvoiced_value | money(currency) }}</td>
+      <td>{{ p.created_at | date }}</td>
       <td>{{ p.status }}</td>
       <td>
         <form method="get" action="/projects/{{ p.id }}/edit" style="display:inline">

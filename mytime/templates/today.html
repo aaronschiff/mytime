@@ -16,6 +16,7 @@
   <input type="hidden" name="start" id="new-start" value="1">
   <button type="submit" id="add-btn">Add &amp; start</button>
 </form>
+<p class="muted" style="font-size:.85rem;margin:.25rem 0">Shortcuts: <kbd>s</kbd> stop/start running timer · <kbd>n</kbd> focus new entry form</p>
 <div id="timers">{% include "_today_body.html" %}</div>
 {% endblock %}
 {% block scripts %}
@@ -28,6 +29,13 @@
     if (/^\d+$/.test(s)) return parseInt(s) >= 0;
     var m = s.match(/^(\d+):(\d{1,2})$/);
     return m ? parseInt(m[2]) <= 59 : false;
+  }
+  function parseDurationSecs(s) {
+    s = (s || '').trim();
+    if (!s || s === '00:00' || s === '0:00') return 0;
+    if (/^\d+$/.test(s)) return parseInt(s) * 3600;
+    var m = s.match(/^(\d+):(\d{1,2})$/);
+    return m ? parseInt(m[1]) * 3600 + parseInt(m[2]) * 60 : null;
   }
 
   var durInput = document.getElementById('new-duration');
@@ -93,29 +101,30 @@
     }
   });
 
+  function submitElapsedEdit(inp) {
+    if (!isValidDuration(inp.value)) {
+      alert('Invalid time format. Use hh:mm (e.g. 2:30) or a whole number of hours (e.g. 2).');
+      return;
+    }
+    var secs = parseDurationSecs(inp.value);
+    if (secs !== null && secs >= 36000) {
+      if (!confirm('This time is 10 or more hours. These are often errors — are you sure?')) return;
+    }
+    var form = inp.closest('form');
+    if (window.htmx) { htmx.trigger(form, 'submit'); } else { form.requestSubmit ? form.requestSubmit() : form.submit(); }
+  }
+
   // Submit elapsed edit on Enter; validate on submit
   document.addEventListener('keydown', function(e) {
     if (e.key === 'Enter') {
       var inp = e.target.closest('.elapsed-edit-form input[name="time_hm"]');
-      if (inp) {
-        e.preventDefault();
-        if (!isValidDuration(inp.value)) {
-          alert('Invalid time format. Use hh:mm (e.g. 2:30) or a whole number of hours (e.g. 2).');
-          return;
-        }
-        inp.closest('form').requestSubmit ? inp.closest('form').requestSubmit() : inp.closest('form').submit();
-      }
+      if (inp) { e.preventDefault(); submitElapsedEdit(inp); }
     }
   });
   document.addEventListener('blur', function(e) {
     var inp = e.target;
     if (inp.name === 'time_hm' && inp.closest('.elapsed-edit-form')) {
-      var form = inp.closest('form');
-      if (window.htmx) {
-        htmx.trigger(form, 'submit');
-      } else {
-        form.submit();
-      }
+      submitElapsedEdit(inp);
     }
   }, true);
 })();

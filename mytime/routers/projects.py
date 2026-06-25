@@ -21,7 +21,7 @@ def _existing_clients(session):
 
 @router.get("/projects", response_class=HTMLResponse)
 def list_page(request: Request, status: str = "active", session: Session = Depends(get_session)):
-    ps = projects.list_projects(session, status=status)
+    ps = projects.list_projects(session, status=status, order_by_date=True)
     summaries = {p.id: budget.project_summary(session, p) for p in ps}
     return templates.TemplateResponse(request, "projects.html", {
         "projects": ps,
@@ -46,17 +46,30 @@ def new_page(request: Request, from_page: str = "", session: Session = Depends(g
 
 @router.post("/projects/new")
 def create(
+    request: Request,
     client_name: str = Form(...), name: str = Form(...),
     hourly_rate: Decimal = Form(...), budget: str = Form(""), description: str = Form(""),
     gst_enabled: str = Form(""), gst_rate: str = Form(""),
     from_page: str = Form(""),
     session: Session = Depends(get_session),
 ):
-    p = projects.create_project(
-        session, client_name, name, hourly_rate, budget, description,
-        gst_enabled=bool(gst_enabled),
-        gst_rate=gst_rate if gst_enabled else None,
-    )
+    try:
+        p = projects.create_project(
+            session, client_name, name, hourly_rate, budget, description,
+            gst_enabled=bool(gst_enabled),
+            gst_rate=gst_rate if gst_enabled else None,
+        )
+    except ValueError as exc:
+        settings = settings_service.get_settings(session)
+        return templates.TemplateResponse(request, "project_form.html", {
+            "project": None,
+            "default_rate": settings.default_hourly_rate,
+            "default_gst_rate": float(settings.default_gst_rate) if settings.default_gst_rate is not None else None,
+            "currency": _currency(session),
+            "existing_clients": _existing_clients(session),
+            "from_page": from_page or "/projects",
+            "error": str(exc),
+        }, status_code=422)
     return RedirectResponse(f"/projects/{p.id}", status_code=303)
 
 
@@ -77,17 +90,30 @@ def edit_page(project_id: int, request: Request, from_page: str = "",
 @router.post("/projects/{project_id}/edit")
 def update(
     project_id: int,
+    request: Request,
     client_name: str = Form(...), name: str = Form(...),
     hourly_rate: Decimal = Form(...), budget: str = Form(""), description: str = Form(""),
     gst_enabled: str = Form(""), gst_rate: str = Form(""),
     from_page: str = Form(""),
     session: Session = Depends(get_session),
 ):
-    projects.update_project(
-        session, project_id, client_name, name, hourly_rate, budget, description,
-        gst_enabled=bool(gst_enabled),
-        gst_rate=gst_rate if gst_enabled else None,
-    )
+    try:
+        projects.update_project(
+            session, project_id, client_name, name, hourly_rate, budget, description,
+            gst_enabled=bool(gst_enabled),
+            gst_rate=gst_rate if gst_enabled else None,
+        )
+    except ValueError as exc:
+        settings = settings_service.get_settings(session)
+        return templates.TemplateResponse(request, "project_form.html", {
+            "project": projects.get_project(session, project_id),
+            "default_rate": settings.default_hourly_rate,
+            "default_gst_rate": float(settings.default_gst_rate) if settings.default_gst_rate is not None else None,
+            "currency": _currency(session),
+            "existing_clients": _existing_clients(session),
+            "from_page": from_page or f"/projects/{project_id}",
+            "error": str(exc),
+        }, status_code=422)
     return RedirectResponse(from_page or f"/projects/{project_id}", status_code=303)
 
 

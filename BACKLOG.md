@@ -1,9 +1,5 @@
 # Backlog
 
-## Schema migration needed on bbbee.local
-
-New GST columns were added in this session. The `_MIGRATIONS` list in `db.py` handles `ALTER TABLE` for all new columns (`settings.default_gst_rate`, `project.gst_enabled`, `project.gst_rate`, `invoice.gst_amount`). These run automatically on startup — just deploy and restart the service.
-
 ## Deferred features for future work
 
 - **Midnight rollover:** Handle timer left running across midnight (currently ticks into next day but doesn't automatically stop or adjust date).

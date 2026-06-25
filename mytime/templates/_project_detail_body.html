@@ -1,12 +1,14 @@
 <h2>Time entries</h2>
+{% if project.status == 'active' %}
 <p><a href="/time/new?project_id={{ project.id }}&from_page=/projects/{{ project.id }}">+ New time entry</a></p>
+{% endif %}
 <table>
   <thead><tr><th>Date</th><th>Task</th><th>Time</th><th>Notes</th></tr></thead>
   <tbody>
   {% for e in entries %}
     <tr class="{{ 'locked' if e.invoice_id }}">
       <td>{{ e.entry_date | date }}</td><td>{{ task_names[e.task_type_id] }}</td>
-      <td>{{ e.seconds | hm }}</td><td>{{ (e.notes or "")[:50] }}{{ "…" if e.notes and e.notes|length > 50 }}</td>
+      <td>{{ e.seconds | hm }}</td><td>{{ (e.notes or "") | truncate_words }}</td>
     </tr>
   {% endfor %}
   </tbody>
@@ -22,7 +24,7 @@
   {% for inv in invoices %}
     <tr><td><a href="/invoices/{{ inv.id }}">{{ inv.invoice_number or inv.id }}</a></td>
         <td>{{ inv.created_at | date }}</td><td>{{ inv.cutoff_date | date }}</td>
-        <td>{{ inv.total_amount | money(currency) }}</td></tr>
+        <td>{{ inv.total_amount | money_cents(currency) }}</td></tr>
   {% endfor %}
   </tbody>
 </table>

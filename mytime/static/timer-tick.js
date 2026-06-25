@@ -23,8 +23,9 @@ function tick() {
 }
 
 function fmtHms(s) {
-  const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60);
-  return String(h).padStart(2, "0") + ":" + String(m).padStart(2, "0");
+  const mins = Math.round(s / 60);
+  const h = Math.floor(mins / 60);
+  return String(h).padStart(2, "0") + ":" + String(mins % 60).padStart(2, "0");
 }
 
 function _checkNotification(sinceIso, now) {

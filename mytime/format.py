@@ -51,3 +51,17 @@ def parse_duration(hm: str) -> int | None:
 def money(amount, symbol: str = "$") -> str:
     q = int(Decimal(amount).quantize(Decimal("1"), rounding=ROUND_HALF_UP))
     return f"{symbol}{q:,}"
+
+
+def money_cents(amount, symbol: str = "$") -> str:
+    q = Decimal(amount).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+    return f"{symbol}{q:,.2f}"
+
+
+def truncate_words(text: str, n: int = 3) -> str:
+    if not text:
+        return ""
+    words = text.split()
+    if len(words) <= n:
+        return text
+    return " ".join(words[:n]) + " …"

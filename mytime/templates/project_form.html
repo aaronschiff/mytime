@@ -2,7 +2,7 @@
 {% block title %}{{ "Edit" if project else "New" }} project — mytime{% endblock %}
 {% block content %}
 <h1>{{ "Edit" if project else "New" }} project</h1>
-{% if error %}<p class="muted">{{ error }}</p>{% endif %}
+{% if error %}<p style="color:#dc2626"><strong>{{ error }}</strong></p>{% endif %}
 <form method="post" action="{{ '/projects/%d/edit' % project.id if project else '/projects/new' }}">
   {% if from_page %}<input type="hidden" name="from_page" value="{{ from_page }}">{% endif %}
   <p><label>Client name<br>

@@ -31,7 +31,7 @@ def _context(session: Session) -> dict:
     return {
         "day": day, "rows": rows, "total_seconds": total,
         "all_projects": ps, "task_types": ts,
-        "names": {p.id: f"{p.client_name} — {p.name}" for p in projects.list_projects(session)},
+        "names": {p.id: p.name for p in projects.list_projects(session)},
         "task_names": {t.id: t.name for t in task_types.list_task_types(session, include_inactive=True)},
     }
 
