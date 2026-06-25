@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}{{ "Edit" if entry else "New" }} entry — mytime{% endblock %}
+{% block content %}
+<h1>{{ "Edit" if entry else "New" }} time entry</h1>
+<form method="post" action="{{ '/time/%d/edit' % entry.id if entry else '/time/new' }}">
+  <p><label>Project<br>
+    <select name="project_id" required>
+      {% for p in all_projects %}
+        <option value="{{ p.id }}" {{ "selected" if entry and entry.project_id == p.id }}>{{ p.client_name }} — {{ p.name }}</option>
+      {% endfor %}
+    </select></label></p>
+  <p><label>Task<br>
+    <select name="task_type_id" required>
+      {% for t in task_types %}
+        <option value="{{ t.id }}" {{ "selected" if entry and entry.task_type_id == t.id }}>{{ t.name }}</option>
+      {% endfor %}
+    </select></label></p>
+  <p><label>Date<br><input type="date" name="entry_date" required
+       value="{{ entry.entry_date if entry else today }}"></label></p>
+  <p>Time
+    <input type="number" name="hours" min="0" value="{{ (entry.seconds // 3600) if entry else 0 }}"> h
+    <input type="number" name="minutes" min="0" max="59" value="{{ ((entry.seconds % 3600) // 60) if entry else 0 }}"> m
+  </p>
+  <p><label>Notes<br><textarea name="notes">{{ entry.notes if entry and entry.notes else '' }}</textarea></label></p>
+  <button type="submit">Save</button> <a href="/time">Cancel</a>
+</form>
+{% endblock %}

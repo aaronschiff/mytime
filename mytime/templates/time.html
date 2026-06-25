@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Time — mytime{% endblock %}
+{% block content %}
+<h1>Time entries</h1>
+<p><a href="/time/new">+ New entry</a></p>
+<form method="get" action="/time" class="muted">
+  <label>Project
+    <select name="project_id">
+      <option value="">All</option>
+      {% for p in all_projects %}
+        <option value="{{ p.id }}" {{ "selected" if filter_project_id == p.id }}>{{ p.client_name }} — {{ p.name }}</option>
+      {% endfor %}
+    </select>
+  </label>
+  <button>Filter</button>
+</form>
+<table>
+  <thead><tr><th>Date</th><th>Project</th><th>Task</th><th>Time</th><th>Notes</th><th></th></tr></thead>
+  <tbody>
+  {% for e in entries %}
+    <tr class="{{ 'locked' if e.invoice_id }}">
+      <td>{{ e.entry_date }}</td>
+      <td>{{ names[e.project_id] }}</td>
+      <td>{{ task_names[e.task_type_id] }}</td>
+      <td>{{ e.seconds | hm }}</td>
+      <td>{{ e.notes or "" }}</td>
+      <td>
+        {% if e.invoice_id %}<span class="muted">invoiced</span>
+        {% else %}
+          <a href="/time/{{ e.id }}/edit">Edit</a>
+          <form method="post" action="/time/{{ e.id }}/delete" style="display:inline"
+                onsubmit="return confirm('Delete this entry?')"><button>Delete</button></form>
+        {% endif %}
+      </td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

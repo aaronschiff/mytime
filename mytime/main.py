@@ -23,9 +23,11 @@ def _startup() -> None:
 
 from mytime.routers import settings as settings_router
 from mytime.routers import projects as projects_router
+from mytime.routers import time_entries as time_router
 
 app.include_router(settings_router.router)
 app.include_router(projects_router.router)
+app.include_router(time_router.router)
 
 
 @app.get("/", response_class=HTMLResponse)
