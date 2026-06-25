@@ -21,6 +21,11 @@ def _startup() -> None:
     init_db()
 
 
+from mytime.routers import settings as settings_router
+
+app.include_router(settings_router.router)
+
+
 @app.get("/", response_class=HTMLResponse)
 def home(request: Request):
     return templates.TemplateResponse(request, "_placeholder.html")
