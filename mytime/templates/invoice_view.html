@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}Invoice #{{ invoice.id }} — mytime{% endblock %}
+{% block content %}
+<h1>Invoice #{{ invoice.id }} — {{ project.client_name }} — {{ project.name }}</h1>
+<p class="muted">Created {{ invoice.created_at.date() }} · cut-off {{ invoice.cutoff_date }}
+  · rate {{ invoice.rate_snapshot | money(currency) }}/h</p>
+<table>
+  <thead><tr><th>Task</th><th>Tracked</th><th>Invoiced</th><th>Amount</th></tr></thead>
+  <tbody>
+  {% for l in lines %}
+    <tr><td>{{ task_names[l.task_type_id] }}</td><td>{{ l.tracked_seconds | hm }}</td>
+        <td>{{ l.invoiced_seconds | hm }}</td><td>{{ l.amount | money(currency) }}</td></tr>
+  {% endfor %}
+  </tbody>
+  <tfoot><tr><th colspan="3">Total</th><th>{{ invoice.total_amount | money(currency) }}</th></tr></tfoot>
+</table>
+<form method="post" action="/invoices/{{ invoice.id }}/void"
+      onsubmit="return confirm('Void this invoice and unlock its entries?')">
+  <button>Void invoice</button>
+</form>
+<p><a href="/projects/{{ project.id }}">Back to project</a></p>
+{% endblock %}

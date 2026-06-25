@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}New invoice — mytime{% endblock %}
+{% block content %}
+<h1>New invoice — {{ project.client_name }} — {{ project.name }}</h1>
+<form method="get" action="/projects/{{ project.id }}/invoices/new" class="muted">
+  <label>Cut-off date <input type="date" name="cutoff" value="{{ cutoff }}"></label>
+  <button>Reload</button>
+</form>
+{% if rows %}
+<form method="post" action="/projects/{{ project.id }}/invoices/new">
+  <input type="hidden" name="cutoff" value="{{ cutoff }}">
+  <table>
+    <thead><tr><th>Task</th><th>Tracked</th><th>Invoice (h &amp; m)</th></tr></thead>
+    <tbody>
+    {% for r in rows %}
+      <tr>
+        <td>{{ r.task_name }}</td>
+        <td>{{ r.tracked_seconds | hm }}</td>
+        <td>
+          <input type="hidden" name="task_id" value="{{ r.task_type_id }}">
+          <input type="number" name="hours_{{ r.task_type_id }}" min="0" value="{{ r.tracked_seconds // 3600 }}"> h
+          <input type="number" name="minutes_{{ r.task_type_id }}" min="0" max="59" value="{{ (r.tracked_seconds % 3600) // 60 }}"> m
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  <p class="muted">Rate {{ project.hourly_rate | money(currency) }}/h. Leftover tracked time is written off.</p>
+  <button type="submit" onclick="return confirm('Create invoice and lock these entries?')">Create invoice</button>
+  <a href="/projects/{{ project.id }}">Cancel</a>
+</form>
+{% else %}
+<p class="muted">No uninvoiced time up to this date. <a href="/projects/{{ project.id }}">Back</a></p>
+{% endif %}
+{% endblock %}

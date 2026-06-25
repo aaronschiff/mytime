@@ -11,3 +11,16 @@
   {% endfor %}
   </tbody>
 </table>
+
+<h2>Invoices</h2>
+<p><a href="/projects/{{ project.id }}/invoices/new">+ New invoice</a></p>
+<table>
+  <thead><tr><th>#</th><th>Date</th><th>Cut-off</th><th>Total</th></tr></thead>
+  <tbody>
+  {% for inv in invoices %}
+    <tr><td><a href="/invoices/{{ inv.id }}">{{ inv.id }}</a></td>
+        <td>{{ inv.created_at.date() }}</td><td>{{ inv.cutoff_date }}</td>
+        <td>{{ inv.total_amount | money(currency) }}</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
