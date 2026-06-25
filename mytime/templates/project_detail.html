@@ -7,6 +7,7 @@
   · {{ project.status }}</p>
 {% if project.description %}<p>{{ project.description }}</p>{% endif %}
 <p><a href="/projects/{{ project.id }}/edit">Edit project</a></p>
+{% if summary %}<div class="card">{% include "_budget_bar.html" %}</div>{% endif %}
 
 <section id="detail-body">{% include "_project_detail_body.html" %}</section>
 {% endblock %}

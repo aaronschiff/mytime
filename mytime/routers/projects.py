@@ -62,13 +62,14 @@ def update(
 
 @router.get("/projects/{project_id}", response_class=HTMLResponse)
 def detail_page(project_id: int, request: Request, session: Session = Depends(get_session)):
-    from mytime.services import time_entries as te, task_types
+    from mytime.services import time_entries as te, task_types, budget
+    project = projects.get_project(session, project_id)
+    summary = budget.project_summary(session, project)
     task_names = {t.id: t.name for t in task_types.list_task_types(session, include_inactive=True)}
     return templates.TemplateResponse(request, "project_detail.html", {
-        "project": projects.get_project(session, project_id),
-        "currency": _currency(session),
+        "project": project, "currency": _currency(session),
         "entries": te.list_entries(session, project_id=project_id),
-        "task_names": task_names,
+        "task_names": task_names, "summary": summary, "s": summary,
     })
 
 

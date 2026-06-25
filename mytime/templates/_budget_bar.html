@@ -1,0 +1,22 @@
+{% set inv = s.invoiced_value | float %}
+{% set unv = s.uninvoiced_value | float %}
+{% if s.project.budget is not none %}
+  {% set scale = [s.project.budget | float, (inv + unv)] | max %}
+{% else %}
+  {% set scale = [(inv + unv), 1] | max %}
+{% endif %}
+<div class="bar">
+  <span class="seg seg-inv" style="width:{{ (inv / scale * 100) if scale else 0 }}%"></span>
+  <span class="seg seg-unv" style="width:{{ (unv / scale * 100) if scale else 0 }}%"></span>
+  {% if s.project.budget is not none and not s.over_budget %}
+    <span class="seg seg-rem" style="width:{{ (s.budget_remaining | float / scale * 100) if scale else 0 }}%"></span>
+  {% endif %}
+</div>
+<p class="muted">
+  Invoiced {{ s.invoiced_value | money(currency) }} ·
+  Uninvoiced {{ s.uninvoiced_value | money(currency) }} ·
+  {% if s.project.budget is none %}no budget
+  {% elif s.over_budget %}<strong>over budget by {{ s.exceedance | money(currency) }}</strong>
+  {% else %}remaining {{ s.budget_remaining | money(currency) }}{% endif %}
+  · tracked {{ s.total_tracked_seconds | hm }}
+</p>

@@ -15,3 +15,6 @@ tr.running { background:#dcfce7; }
 tr.running .elapsed { color:var(--run); font-weight:700; }
 tr.running td:first-child::before { content:"● "; color:var(--run); animation:pulse 1.2s infinite; }
 @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+.bar { display:flex; height:18px; border:1px solid var(--line); border-radius:4px; overflow:hidden; background:#fff; }
+.seg-inv { background:#1d4ed8; } .seg-unv { background:#93c5fd; } .seg-rem { background:#e2e8f0; }
+.card { background:#fff; border:1px solid var(--line); border-radius:8px; padding:.8rem 1rem; margin:.6rem 0; }

@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}Overview — mytime{% endblock %}
+{% block content %}
+<h1>Overview</h1>
+{% for s in summaries %}
+  <div class="card">
+    <strong><a href="/projects/{{ s.project.id }}">{{ s.project.client_name }} — {{ s.project.name }}</a></strong>
+    <span class="muted">· {{ s.project.hourly_rate | money(currency) }}/h</span>
+    {% include "_budget_bar.html" %}
+  </div>
+{% else %}
+  <p class="muted">No active projects. <a href="/projects/new">Add one.</a></p>
+{% endfor %}
+{% endblock %}
