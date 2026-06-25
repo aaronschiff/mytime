@@ -45,7 +45,10 @@ def build_invoice_preview(session: Session, project_id: int, cutoff_date: date) 
     return rows
 
 
-def create_invoice(session, project_id, cutoff_date, invoiced_seconds_by_task, at: datetime) -> Invoice:
+def create_invoice(
+    session, project_id, cutoff_date, invoiced_seconds_by_task, at: datetime,
+    invoice_number: str | None = None,
+) -> Invoice:
     project = session.get(Project, project_id)
     rate = project.hourly_rate
     entries = list(session.scalars(_includable(project_id, cutoff_date)))
@@ -55,7 +58,8 @@ def create_invoice(session, project_id, cutoff_date, invoiced_seconds_by_task, a
         tracked[e.task_type_id] = tracked.get(e.task_type_id, 0) + e.seconds
 
     invoice = Invoice(project_id=project_id, cutoff_date=cutoff_date,
-                      rate_snapshot=rate, total_amount=Decimal("0.00"))
+                      rate_snapshot=rate, total_amount=Decimal("0.00"),
+                      invoice_number=invoice_number)
     session.add(invoice)
     session.flush()
 

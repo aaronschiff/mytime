@@ -21,7 +21,7 @@ def test_create_and_list(session):
 def test_update_and_delete(session):
     p, t = _setup(session)
     e = te.create_entry(session, p.id, t.id, date(2026, 6, 25), 3600, None)
-    te.update_entry(session, e.id, t.id, date(2026, 6, 25), 7200, "edited")
+    te.update_entry(session, e.id, p.id, t.id, date(2026, 6, 25), 7200, "edited")
     assert te.get_entry(session, e.id).seconds == 7200
     te.delete_entry(session, e.id)
     assert te.get_entry(session, e.id) is None
@@ -33,6 +33,6 @@ def test_locked_entry_rejects_edit_and_delete(session):
     e.invoice_id = 1
     session.commit()
     with pytest.raises(guards.EntryLockedError):
-        te.update_entry(session, e.id, t.id, date(2026, 6, 25), 10, None)
+        te.update_entry(session, e.id, p.id, t.id, date(2026, 6, 25), 10, None)
     with pytest.raises(guards.EntryLockedError):
         te.delete_entry(session, e.id)

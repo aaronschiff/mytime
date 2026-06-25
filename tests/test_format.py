@@ -1,12 +1,16 @@
+from datetime import date, datetime
 from decimal import Decimal
 from mytime import format as fmt
 
 
-def test_fmt_hm_rounds_to_minutes():
-    assert fmt.fmt_hm(0) == "0h 0m"
-    assert fmt.fmt_hm(5 * 3600 + 42 * 60 + 30) == "5h 42m"
-    assert fmt.fmt_hm(59) == "0h 0m"
-    assert fmt.fmt_hm(60) == "0h 1m"
+def test_fmt_hm_rounds_to_nearest_minute():
+    assert fmt.fmt_hm(0) == "00:00"
+    assert fmt.fmt_hm(29) == "00:00"
+    assert fmt.fmt_hm(30) == "00:01"
+    assert fmt.fmt_hm(59) == "00:01"
+    assert fmt.fmt_hm(60) == "00:01"
+    assert fmt.fmt_hm(5 * 3600 + 42 * 60 + 30) == "05:43"
+    assert fmt.fmt_hm(5 * 3600 + 42 * 60 + 29) == "05:42"
 
 
 def test_fmt_hms():
@@ -20,6 +24,23 @@ def test_parse_hm():
 
 
 def test_money():
-    assert fmt.money(Decimal("1234.5")) == "$1,234.50"
-    assert fmt.money(Decimal("0")) == "$0.00"
-    assert fmt.money(Decimal("99.999"), "£") == "£100.00"
+    assert fmt.money(Decimal("1234.5")) == "$1,235"
+    assert fmt.money(Decimal("0")) == "$0"
+    assert fmt.money(Decimal("99.4"), "£") == "£99"
+    assert fmt.money(Decimal("99.5"), "£") == "£100"
+
+
+def test_fmt_date():
+    assert fmt.fmt_date(date(2026, 6, 25)) == "25-06-2026"
+    assert fmt.fmt_date(datetime(2026, 6, 25, 14, 30, 0)) == "25-06-2026"
+
+
+def test_parse_duration():
+    assert fmt.parse_duration("1:30") == 5400
+    assert fmt.parse_duration("01:30") == 5400
+    assert fmt.parse_duration("0:00") == 0
+    assert fmt.parse_duration("00:00") == 0
+    assert fmt.parse_duration("2:45") == 2 * 3600 + 45 * 60
+    assert fmt.parse_duration("invalid") == 0
+    assert fmt.parse_duration("") == 0
+    assert fmt.parse_duration("1:60") == 0  # invalid minutes

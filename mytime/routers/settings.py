@@ -23,9 +23,10 @@ def settings_page(request: Request, session: Session = Depends(get_session)):
 def save_settings(
     default_hourly_rate: Decimal = Form(...),
     currency_symbol: str = Form(...),
+    invoice_prefix: str = Form("INV-"),
     session: Session = Depends(get_session),
 ):
-    settings_service.update_settings(session, default_hourly_rate, currency_symbol)
+    settings_service.update_settings(session, default_hourly_rate, currency_symbol, invoice_prefix)
     return RedirectResponse("/settings", status_code=303)
 
 

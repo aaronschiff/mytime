@@ -1,0 +1,10 @@
+[Unit]
+Description=mytime database backup
+After=local-fs.target
+
+[Service]
+Type=oneshot
+User=aaron
+ExecStart=/usr/bin/python3 /home/aaron/mytime/deploy/backup.py
+StandardOutput=journal
+StandardError=journal

@@ -1,8 +1,8 @@
 {% extends "base.html" %}
 {% block title %}Today — mytime{% endblock %}
 {% block content %}
-<h1>Today <span class="muted">{{ day }}</span></h1>
-<form method="post" action="/today/add">
+<h1>Today <span class="muted">{{ day | date }}</span></h1>
+<form method="post" action="/today/add" id="add-form">
   <select name="project_id" required>
     <option value="" disabled selected>Project…</option>
     {% for p in all_projects %}<option value="{{ p.id }}">{{ p.client_name }} — {{ p.name }}</option>{% endfor %}
@@ -12,8 +12,93 @@
     {% for t in task_types %}<option value="{{ t.id }}">{{ t.name }}</option>{% endfor %}
   </select>
   <input type="text" name="notes" placeholder="Notes (optional)">
-  <button type="submit">Add &amp; start</button>
+  <input type="text" name="duration" id="new-duration" value="00:00" size="5" style="width:5em" placeholder="hh:mm">
+  <input type="hidden" name="start" id="new-start" value="1">
+  <button type="submit" id="add-btn">Add &amp; start</button>
 </form>
 <div id="timers">{% include "_today_body.html" %}</div>
 {% endblock %}
-{% block scripts %}<script src="/static/timer-tick.js" defer></script>{% endblock %}
+{% block scripts %}
+<script src="/static/timer-tick.js" defer></script>
+<script>
+(function() {
+  var durInput = document.getElementById('new-duration');
+  var startInput = document.getElementById('new-start');
+  var addBtn = document.getElementById('add-btn');
+  function updateBtn() {
+    var val = durInput.value.trim();
+    var isZero = (val === '' || val === '00:00' || val === '0:00');
+    if (isZero) {
+      startInput.value = '1';
+      addBtn.textContent = 'Add & start';
+    } else {
+      startInput.value = '0';
+      addBtn.textContent = 'Save';
+    }
+  }
+  durInput.addEventListener('input', updateBtn);
+
+  // Keyboard shortcuts (only when not in a text/select input)
+  document.addEventListener('keydown', function(e) {
+    var tag = document.activeElement ? document.activeElement.tagName : '';
+    var inInput = (tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA');
+    if (inInput) return;
+    if (e.key === 's' || e.key === 'S') {
+      e.preventDefault();
+      // Stop running timer if any, otherwise start the first stopped timer
+      var stopForm = document.querySelector('#timers form[action*="/stop"]');
+      if (stopForm) {
+        if (window.htmx) htmx.trigger(stopForm, 'submit'); else stopForm.requestSubmit();
+      } else {
+        var startForm = document.querySelector('#timers form[action*="/start"]');
+        if (startForm) {
+          if (window.htmx) htmx.trigger(startForm, 'submit'); else startForm.requestSubmit();
+        }
+      }
+    } else if (e.key === 'n' || e.key === 'N') {
+      e.preventDefault();
+      var sel = document.querySelector('#add-form select[name="project_id"]');
+      if (sel) sel.focus();
+    }
+  });
+
+  // Click-to-edit elapsed time for stopped timers
+  document.addEventListener('click', function(e) {
+    var span = e.target.closest('.elapsed-display');
+    if (span) {
+      var id = span.dataset.entryId;
+      var form = document.querySelector('.elapsed-edit-form[data-entry-id="' + id + '"]');
+      if (form) {
+        span.style.display = 'none';
+        form.style.display = 'inline';
+        var inp = form.querySelector('input[name="time_hm"]');
+        if (inp) { inp.focus(); inp.select(); }
+      }
+    }
+  });
+
+  // Submit elapsed edit on Enter or blur
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') {
+      var inp = e.target.closest('.elapsed-edit-form input[name="time_hm"]');
+      if (inp) {
+        e.preventDefault();
+        inp.closest('form').requestSubmit ? inp.closest('form').requestSubmit() : inp.closest('form').submit();
+      }
+    }
+  });
+  document.addEventListener('blur', function(e) {
+    var inp = e.target;
+    if (inp.name === 'time_hm' && inp.closest('.elapsed-edit-form')) {
+      // Submit on blur via htmx if htmx is present, else native submit
+      var form = inp.closest('form');
+      if (window.htmx) {
+        htmx.trigger(form, 'submit');
+      } else {
+        form.submit();
+      }
+    }
+  }, true);
+})();
+</script>
+{% endblock %}

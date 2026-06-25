@@ -3,8 +3,8 @@
 {% block content %}
 <h1>Projects</h1>
 <p>
-  <a href="/projects?status=active">Active</a> ·
-  <a href="/projects?status=archived">Archived</a> ·
+  <a href="/projects?status=active" {% if status == "active" %}style="font-weight:900;text-decoration:underline"{% endif %}>Active</a> ·
+  <a href="/projects?status=archived" {% if status == "archived" %}style="font-weight:900;text-decoration:underline"{% endif %}>Archived</a> ·
   <a href="/projects/new">+ New project</a>
 </p>
 <table>
@@ -17,7 +17,10 @@
       <td>{{ p.hourly_rate | money(currency) }}</td>
       <td>{{ p.status }}</td>
       <td>
-        <a href="/projects/{{ p.id }}/edit">Edit</a>
+        <form method="get" action="/projects/{{ p.id }}/edit" style="display:inline">
+          <input type="hidden" name="from_page" value="/projects">
+          <button>Edit</button>
+        </form>
         {% if p.status == "active" %}
           <form method="post" action="/projects/{{ p.id }}/status" style="display:inline">
             <input type="hidden" name="status" value="archived"><button>Archive</button>

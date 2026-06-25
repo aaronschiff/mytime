@@ -2,6 +2,62 @@
 
 ## 2026-06-25
 
+**What we worked on:** Full TESTING.md pass — all bugs, backlog items, and new features resolved; 53 tests passing.
+
+- Worked through every item in `TESTING.md`; all marked `[x]`.
+- **UTC timer bug:** Timers showed 12h offset because `running_since.isoformat()` emits a naive datetime string; fixed by appending `"Z"` so `Date.parse()` in `timer-tick.js` treats it as UTC.
+- **JS total bug:** Stopped timer `<span>` elements lost the `.elapsed` class in a refactor, so `timer-tick.js` no longer included them in the daily total. Fixed by restoring `.elapsed elapsed-display` dual-class with `data-running="0"` on stopped entries and updating `timer-tick.js` to only set `textContent` for running timers.
+- **Keyboard shortcuts:** Added `s`/`S` (stop/start timer) and `n`/`N` (focus add-form) in `today.html`; guards against active input elements.
+- **Browser notifications:** `_checkNotification()` added to `timer-tick.js`; triggers once when running timer exceeds 4 hours since last start; requests permission on first tick.
+- **Data backups:** `deploy/backup.py` with 28-day tiered retention (daily snapshots for 28 days, then one per 28-day window); `deploy/mytime-backup.service` + `deploy/mytime-backup.timer` systemd units.
+- **Clients feature:** See prior entry below for full detail.
+- Caught and removed `</content>` XML artefacts introduced by subagents into Python files and templates.
+
+---
+
+## 2026-06-25
+
+**What we worked on:** Clients feature — first-class Client entity, Clients page, CRUD with delete guard.
+
+- Added `Client` model (id, name unique, created_at) to `models.py`; added nullable `client_id` FK on `Project`.
+- Added `ALTER TABLE project ADD COLUMN client_id INTEGER REFERENCES client(id)` migration to `db.py._MIGRATIONS`.
+- Added `_populate_client_ids()` in `db.py` called from `init_db()` after migrations — looks up or creates `Client` records for all existing projects whose `client_id IS NULL`.
+- Created `mytime/services/clients.py`: `list_clients`, `get_client`, `create_client`, `update_client` (also updates all linked project `client_name` fields), `delete_client` (raises `ClientHasTimeError` if blocked), `find_or_create`.
+- Added `ClientHasTimeError` and `can_delete_client()` to `mytime/services/guards.py`.
+- Updated `mytime/services/projects.py` `create_project` and `update_project` to call `find_or_create` and set `client_id` on the project.
+- Created `mytime/routers/clients.py` with: `GET /clients`, `GET /clients/{id}`, `GET /clients/{id}/edit`, `POST /clients/{id}/edit`, `POST /clients/{id}/delete`.
+- Created three templates: `clients.html` (list with project count), `client_detail.html` (per-client project list), `client_form.html` (name-only edit form).
+- Added `<a href="/clients">Clients</a>` to `base.html` nav between Time and Invoices.
+- Registered clients router in `main.py`.
+- All 53 existing tests continue to pass — no new test fixtures needed; `create_all` in conftest includes new `Client` table and `client_id` column automatically.
+- Marked all Clients items, Keyboard shortcuts, Browser notifications, Data backups, and all UI polish items as `[x]` in `TESTING.md`.
+
+---
+
+## 2026-06-25
+
+**What we worked on:** Full UI polish pass from TESTING.md — all items implemented, 53 tests passing.
+
+- Implemented all UI polish items from `TESTING.md` in one session; all checkboxes now marked `[x]`.
+- **app.css:** Removed pulsing animation from running timer dot (now solid green). Added spinner-hiding CSS for number inputs. Added `.over-budget` red class and `.swatch` + `.swatch-inv/unv/rem` for legend swatches.
+- **format.py:** Added `parse_duration(hm: str) -> int` helper (parses "hh:mm" → seconds, returns 0 for invalid).
+- **Today page:** (1) Solid dot. (2) Invoiced entries show "Invoiced" label instead of Start/Edit/Delete. (3) Two-mode add — duration input + JS toggles button from "Add & start" to "Save" and sets `start` hidden field; `POST /today/add` routes to `add_timer` vs `create_entry`. (4) Click-to-edit elapsed time on stopped entries; `POST /today/{id}/set-time` endpoint updates seconds in place.
+- **Time entry form:** Replaced `hours` + `minutes` number inputs with single `duration` text field (hh:mm). Notes textarea full-width. Future-date confirm dialog via JS. `from_page` param threads cancel/save redirect back to caller.
+- **Project form:** Full-width fields, description 4 rows, currency symbol prefix on rate/budget, `<datalist>` autocomplete for client name from existing projects, `from_page` param for cancel/save.
+- **Overview:** Colored swatches before Invoiced/Uninvoiced/Remaining labels, over-budget amount in `.over-budget` red, "New invoice" link per project card.
+- **Invoice build page:** Replaced h+m number inputs with single hh:mm text field per task row. Added dollar amount column (calculated live by JS). Added totals row (tracked, invoiced, dollars). Showed already-invoiced total and budget remaining (from budget service). Added editable `invoice_number` field with uniqueness check (returns 400 with error message on duplicate). Invoice number prefix sourced from `Settings.invoice_prefix`.
+- **Invoice model:** Added nullable `invoice_number` column (String(50)). Note: existing DBs need column added manually or DB recreated.
+- **Settings model + service + router:** Added `invoice_prefix` field (String(20), default "INV-"). Settings page shows/saves it.
+- **Invoice list:** New `GET /invoices` endpoint + `invoice_list.html` template (reverse-chron, shows number, project, dates, total). Added "Invoices" nav link between "Time" and "Settings" in `base.html`. Invoice view title uses `invoice_number` if set.
+- **Projects list:** Active/Archived filter links visually highlighted (bold + underline) when selected. `status` passed to template. Edit link converted to button form with `from_page`.
+- **Time list:** Edit link converted to button form with `from_page`. "+ New entry" also button form.
+- **Tests:** Updated `test_time_routes.py` and `test_invoices_routes.py` for new `duration` / `duration_<tid>` params. Updated `test_smoke.py` to use `client` fixture (was using real DB, broke on new column). Added `test_format.py::test_parse_duration`. Added `tests/test_new_features.py` with 7 new tests covering save-without-start, set-time, invoice list, invoice number uniqueness, and projects status display. Total: 53 tests, all passing (was 45).
+- **Key constraint note:** SQLite `create_all` on startup only creates new tables, not new columns — `invoice_prefix` and `invoice_number` columns won't appear in existing DBs without recreation or manual `ALTER TABLE`.
+
+---
+
+## 2026-06-25
+
 **What we worked on:** Deployed to `bbbee.local` for LAN testing.
 
 - Rsync'd project files to `/home/aaron/mytime/` on `bbbee.local` (Ubuntu Linux, x86_64).

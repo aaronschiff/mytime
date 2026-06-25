@@ -5,7 +5,7 @@
   <tbody>
   {% for e in entries %}
     <tr class="{{ 'locked' if e.invoice_id }}">
-      <td>{{ e.entry_date }}</td><td>{{ task_names[e.task_type_id] }}</td>
+      <td>{{ e.entry_date | date }}</td><td>{{ task_names[e.task_type_id] }}</td>
       <td>{{ e.seconds | hm }}</td><td>{{ e.notes or "" }}</td>
     </tr>
   {% endfor %}
@@ -19,7 +19,7 @@
   <tbody>
   {% for inv in invoices %}
     <tr><td><a href="/invoices/{{ inv.id }}">{{ inv.id }}</a></td>
-        <td>{{ inv.created_at.date() }}</td><td>{{ inv.cutoff_date }}</td>
+        <td>{{ inv.created_at | date }}</td><td>{{ inv.cutoff_date | date }}</td>
         <td>{{ inv.total_amount | money(currency) }}</td></tr>
   {% endfor %}
   </tbody>

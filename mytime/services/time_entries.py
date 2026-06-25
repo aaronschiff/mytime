@@ -32,9 +32,10 @@ def create_entry(session, project_id, task_type_id, entry_date, seconds, notes) 
     return e
 
 
-def update_entry(session, entry_id, task_type_id, entry_date, seconds, notes) -> TimeEntry:
+def update_entry(session, entry_id, project_id, task_type_id, entry_date, seconds, notes) -> TimeEntry:
     e = get_entry(session, entry_id)
     guards.ensure_unlocked(e)
+    e.project_id = project_id
     e.task_type_id = task_type_id
     e.entry_date = entry_date
     e.seconds = int(seconds)

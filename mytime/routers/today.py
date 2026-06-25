@@ -4,7 +4,8 @@ from sqlalchemy.orm import Session
 
 from mytime.clock import now, today
 from mytime.db import get_session
-from mytime.services import timers, projects, task_types
+from mytime.format import parse_duration
+from mytime.services import timers, projects, task_types, time_entries as te
 from mytime.templating import templates
 
 router = APIRouter()
@@ -25,10 +26,10 @@ def _context(session: Session) -> dict:
             "running": e.running_since is not None,
             "elapsed": elapsed,                 # live value at render, for first paint
             "base": e.seconds,                  # stored accumulated seconds (no running delta)
-            "since_iso": e.running_since.isoformat() if e.running_since else "",
+            "since_iso": e.running_since.isoformat() + "Z" if e.running_since else "",
         })
     return {
-        "day": day.isoformat(), "rows": rows, "total_seconds": total,
+        "day": day, "rows": rows, "total_seconds": total,
         "all_projects": ps, "task_types": ts,
         "names": {p.id: f"{p.client_name} — {p.name}" for p in projects.list_projects(session)},
         "task_names": {t.id: t.name for t in task_types.list_task_types(session, include_inactive=True)},
@@ -45,9 +46,16 @@ def _body(request: Request, session: Session) -> HTMLResponse:
 
 
 @router.post("/today/add")
-def add(project_id: int = Form(...), task_type_id: int = Form(...),
-        notes: str = Form(""), session: Session = Depends(get_session)):
-    timers.add_timer(session, project_id, task_type_id, notes, now())
+def add(
+    project_id: int = Form(...), task_type_id: int = Form(...),
+    notes: str = Form(""), duration: str = Form("00:00"), start: int = Form(1),
+    session: Session = Depends(get_session),
+):
+    if start:
+        timers.add_timer(session, project_id, task_type_id, notes, now())
+    else:
+        seconds = parse_duration(duration)
+        te.create_entry(session, project_id, task_type_id, today(), seconds, notes)
     return RedirectResponse("/today", status_code=303)
 
 
@@ -63,8 +71,17 @@ def stop(entry_id: int, request: Request, session: Session = Depends(get_session
     return _body(request, session)
 
 
+@router.post("/today/{entry_id}/set-time", response_class=HTMLResponse)
+def set_time(entry_id: int, request: Request, time_hm: str = Form(...),
+             session: Session = Depends(get_session)):
+    entry = te.get_entry(session, entry_id)
+    if entry and entry.running_since is None and entry.invoice_id is None:
+        entry.seconds = parse_duration(time_hm)
+        session.commit()
+    return _body(request, session)
+
+
 @router.post("/today/{entry_id}/delete", response_class=HTMLResponse)
 def delete(entry_id: int, request: Request, session: Session = Depends(get_session)):
-    from mytime.services import time_entries as te
     te.delete_entry(session, entry_id)
     return _body(request, session)

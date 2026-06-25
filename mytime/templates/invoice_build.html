@@ -6,11 +6,17 @@
   <label>Cut-off date <input type="date" name="cutoff" value="{{ cutoff }}"></label>
   <button>Reload</button>
 </form>
+{% if error %}<p style="color:#dc2626"><strong>{{ error }}</strong></p>{% endif %}
 {% if rows %}
 <form method="post" action="/projects/{{ project.id }}/invoices/new">
   <input type="hidden" name="cutoff" value="{{ cutoff }}">
+  <p>
+    <label>Invoice number (optional)<br>
+      <input type="text" name="invoice_number" value="{{ invoice_number_prefix }}" style="width:12em">
+    </label>
+  </p>
   <table>
-    <thead><tr><th>Task</th><th>Tracked</th><th>Invoice (h &amp; m)</th></tr></thead>
+    <thead><tr><th>Task</th><th>Tracked</th><th>Invoice (hh:mm)</th><th>Amount</th></tr></thead>
     <tbody>
     {% for r in rows %}
       <tr>
@@ -18,18 +24,82 @@
         <td>{{ r.tracked_seconds | hm }}</td>
         <td>
           <input type="hidden" name="task_id" value="{{ r.task_type_id }}">
-          <input type="number" name="hours_{{ r.task_type_id }}" min="0" value="{{ r.tracked_seconds // 3600 }}"> h
-          <input type="number" name="minutes_{{ r.task_type_id }}" min="0" max="59" value="{{ (r.tracked_seconds % 3600) // 60 }}"> m
+          <input type="text" name="duration_{{ r.task_type_id }}" value="{{ r.tracked_seconds | hm }}"
+                 size="5" style="width:6em" class="inv-dur" data-tid="{{ r.task_type_id }}"
+                 data-rate="{{ project.hourly_rate | float }}">
         </td>
+        <td class="row-amount" data-tid="{{ r.task_type_id }}">—</td>
       </tr>
     {% endfor %}
     </tbody>
+    <tfoot>
+      <tr>
+        <th>Total</th>
+        <th>{{ total_tracked_seconds | hm }}</th>
+        <th id="total-inv-hm">{{ total_tracked_seconds | hm }}</th>
+        <th id="total-amount">—</th>
+      </tr>
+    </tfoot>
   </table>
-  <p class="muted">Rate {{ project.hourly_rate | money(currency) }}/h. Leftover tracked time is written off.</p>
+  <p class="muted">Rate {{ project.hourly_rate | money(currency) }}/h.
+    Previously invoiced: {{ already_invoiced | money(currency) }}.
+    {% if budget_remaining is not none %}Budget remaining: {{ budget_remaining | money(currency) }}.{% endif %}
+    Leftover tracked time is written off.
+  </p>
   <button type="submit" onclick="return confirm('Create invoice and lock these entries?')">Create invoice</button>
   <a href="/projects/{{ project.id }}">Cancel</a>
 </form>
 {% else %}
 <p class="muted">No uninvoiced time up to this date. <a href="/projects/{{ project.id }}">Back</a></p>
 {% endif %}
+{% endblock %}
+{% block scripts %}
+<script>
+(function() {
+  // parse hh:mm to decimal hours
+  function parseHM(s) {
+    s = (s || '').trim();
+    var parts = s.split(':');
+    if (parts.length < 2) return 0;
+    var h = parseInt(parts[0]) || 0;
+    var m = parseInt(parts[1]) || 0;
+    return h + m / 60;
+  }
+  function fmtMoney(n, sym) {
+    return sym + Math.round(n).toLocaleString();
+  }
+  function fmtHM(totalMins) {
+    var h = Math.floor(totalMins / 60);
+    var m = totalMins % 60;
+    return (h < 10 ? '0' : '') + h + ':' + (m < 10 ? '0' : '') + m;
+  }
+
+  var currency = {{ currency | tojson }};
+
+  function recalc() {
+    var inputs = document.querySelectorAll('.inv-dur');
+    var totalAmount = 0;
+    var totalMins = 0;
+    inputs.forEach(function(inp) {
+      var tid = inp.dataset.tid;
+      var rate = parseFloat(inp.dataset.rate);
+      var hrs = parseHM(inp.value);
+      var amount = hrs * rate;
+      totalAmount += amount;
+      totalMins += Math.round(hrs * 60);
+      var cell = document.querySelector('.row-amount[data-tid="' + tid + '"]');
+      if (cell) cell.textContent = fmtMoney(amount, currency);
+    });
+    var totAmtEl = document.getElementById('total-amount');
+    if (totAmtEl) totAmtEl.textContent = fmtMoney(totalAmount, currency);
+    var totHmEl = document.getElementById('total-inv-hm');
+    if (totHmEl) totHmEl.textContent = fmtHM(totalMins);
+  }
+
+  document.querySelectorAll('.inv-dur').forEach(function(inp) {
+    inp.addEventListener('input', recalc);
+  });
+  recalc();
+})();
+</script>
 {% endblock %}

@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}Edit Client — mytime{% endblock %}
+{% block content %}
+<h1>Edit Client</h1>
+<form method="post" action="/clients/{{ client.id }}/edit">
+  <label>Name
+    <input type="text" name="name" value="{{ client.name }}" required>
+  </label>
+  <br><br>
+  <button type="submit">Save</button>
+  <a href="/clients/{{ client.id }}"><button type="button">Cancel</button></a>
+</form>
+{% endblock %}

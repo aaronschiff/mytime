@@ -2,26 +2,41 @@
 {% block title %}{{ "Edit" if entry else "New" }} entry — mytime{% endblock %}
 {% block content %}
 <h1>{{ "Edit" if entry else "New" }} time entry</h1>
-<form method="post" action="{{ '/time/%d/edit' % entry.id if entry else '/time/new' }}">
+<form method="post" action="{{ '/time/%d/edit' % entry.id if entry else '/time/new' }}" id="entry-form">
+  {% if from_page %}<input type="hidden" name="from_page" value="{{ from_page }}">{% endif %}
   <p><label>Project<br>
-    <select name="project_id" required>
+    <select name="project_id" required style="width:100%">
       {% for p in all_projects %}
         <option value="{{ p.id }}" {{ "selected" if entry and entry.project_id == p.id }}>{{ p.client_name }} — {{ p.name }}</option>
       {% endfor %}
     </select></label></p>
   <p><label>Task<br>
-    <select name="task_type_id" required>
+    <select name="task_type_id" required style="width:100%">
       {% for t in task_types %}
         <option value="{{ t.id }}" {{ "selected" if entry and entry.task_type_id == t.id }}>{{ t.name }}</option>
       {% endfor %}
     </select></label></p>
-  <p><label>Date<br><input type="date" name="entry_date" required
+  <p><label>Date<br><input type="date" name="entry_date" required id="entry-date"
        value="{{ entry.entry_date if entry else today }}"></label></p>
-  <p>Time
-    <input type="number" name="hours" min="0" value="{{ (entry.seconds // 3600) if entry else 0 }}"> h
-    <input type="number" name="minutes" min="0" max="59" value="{{ ((entry.seconds % 3600) // 60) if entry else 0 }}"> m
-  </p>
-  <p><label>Notes<br><textarea name="notes">{{ entry.notes if entry and entry.notes else '' }}</textarea></label></p>
-  <button type="submit">Save</button> <a href="/time">Cancel</a>
+  <p><label>Time (hh:mm)<br><input type="text" name="duration"
+       value="{{ entry.seconds | hm if entry else '00:00' }}" placeholder="hh:mm" size="6" style="width:7em"></label></p>
+  <p><label>Notes<br><textarea name="notes" style="width:100%" rows="3">{{ entry.notes if entry and entry.notes else '' }}</textarea></label></p>
+  <button type="submit">Save</button>
+  <a href="{{ from_page or '/time' }}">Cancel</a>
 </form>
+{% endblock %}
+{% block scripts %}
+<script>
+(function() {
+  var today = {{ today | tojson }};
+  document.getElementById('entry-form').addEventListener('submit', function(e) {
+    var d = document.getElementById('entry-date').value;
+    if (d && d > today) {
+      if (!confirm('This date is in the future. Continue?')) {
+        e.preventDefault();
+      }
+    }
+  });
+})();
+</script>
 {% endblock %}

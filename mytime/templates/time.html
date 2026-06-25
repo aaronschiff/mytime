@@ -2,7 +2,7 @@
 {% block title %}Time — mytime{% endblock %}
 {% block content %}
 <h1>Time entries</h1>
-<p><a href="/time/new">+ New entry</a></p>
+<p><form method="get" action="/time/new" style="display:inline"><input type="hidden" name="from_page" value="/time"><button>+ New entry</button></form></p>
 <form method="get" action="/time" class="muted">
   <label>Project
     <select name="project_id">
@@ -19,7 +19,7 @@
   <tbody>
   {% for e in entries %}
     <tr class="{{ 'locked' if e.invoice_id }}">
-      <td>{{ e.entry_date }}</td>
+      <td>{{ e.entry_date | date }}</td>
       <td>{{ names[e.project_id] }}</td>
       <td>{{ task_names[e.task_type_id] }}</td>
       <td>{{ e.seconds | hm }}</td>
@@ -27,7 +27,10 @@
       <td>
         {% if e.invoice_id %}<span class="muted">invoiced</span>
         {% else %}
-          <a href="/time/{{ e.id }}/edit">Edit</a>
+          <form method="get" action="/time/{{ e.id }}/edit" style="display:inline">
+            <input type="hidden" name="from_page" value="/time">
+            <button>Edit</button>
+          </form>
           <form method="post" action="/time/{{ e.id }}/delete" style="display:inline"
                 onsubmit="return confirm('Delete this entry?')"><button>Delete</button></form>
         {% endif %}

@@ -1,0 +1,11 @@
+[Unit]
+Description=Daily mytime database backup
+Requires=mytime-backup.service
+
+[Timer]
+OnCalendar=daily
+Persistent=true
+RandomizedDelaySec=300
+
+[Install]
+WantedBy=timers.target

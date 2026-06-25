@@ -15,19 +15,27 @@ def _currency(session):
     return settings_service.get_settings(session).currency_symbol
 
 
+def _existing_clients(session):
+    return sorted({p.client_name for p in projects.list_projects(session)})
+
+
 @router.get("/projects", response_class=HTMLResponse)
 def list_page(request: Request, status: str = "active", session: Session = Depends(get_session)):
     return templates.TemplateResponse(request, "projects.html", {
         "projects": projects.list_projects(session, status=status),
         "currency": _currency(session),
+        "status": status,
     })
 
 
 @router.get("/projects/new", response_class=HTMLResponse)
-def new_page(request: Request, session: Session = Depends(get_session)):
+def new_page(request: Request, from_page: str = "", session: Session = Depends(get_session)):
     return templates.TemplateResponse(request, "project_form.html", {
         "project": None,
         "default_rate": settings_service.get_settings(session).default_hourly_rate,
+        "currency": _currency(session),
+        "existing_clients": _existing_clients(session),
+        "from_page": from_page or "/projects",
     })
 
 
@@ -35,6 +43,7 @@ def new_page(request: Request, session: Session = Depends(get_session)):
 def create(
     client_name: str = Form(...), name: str = Form(...),
     hourly_rate: Decimal = Form(...), budget: str = Form(""), description: str = Form(""),
+    from_page: str = Form(""),
     session: Session = Depends(get_session),
 ):
     p = projects.create_project(session, client_name, name, hourly_rate, budget, description)
@@ -42,10 +51,13 @@ def create(
 
 
 @router.get("/projects/{project_id}/edit", response_class=HTMLResponse)
-def edit_page(project_id: int, request: Request, session: Session = Depends(get_session)):
+def edit_page(project_id: int, request: Request, from_page: str = "", session: Session = Depends(get_session)):
     return templates.TemplateResponse(request, "project_form.html", {
         "project": projects.get_project(session, project_id),
         "default_rate": settings_service.get_settings(session).default_hourly_rate,
+        "currency": _currency(session),
+        "existing_clients": _existing_clients(session),
+        "from_page": from_page or f"/projects/{project_id}",
     })
 
 
@@ -54,10 +66,11 @@ def update(
     project_id: int,
     client_name: str = Form(...), name: str = Form(...),
     hourly_rate: Decimal = Form(...), budget: str = Form(""), description: str = Form(""),
+    from_page: str = Form(""),
     session: Session = Depends(get_session),
 ):
     projects.update_project(session, project_id, client_name, name, hourly_rate, budget, description)
-    return RedirectResponse(f"/projects/{project_id}", status_code=303)
+    return RedirectResponse(from_page or f"/projects/{project_id}", status_code=303)
 
 
 @router.get("/projects/{project_id}", response_class=HTMLResponse)
@@ -88,5 +101,6 @@ def delete(project_id: int, request: Request, session: Session = Depends(get_ses
         return templates.TemplateResponse(request, "projects.html", {
             "projects": projects.list_projects(session, status="active"),
             "currency": _currency(session),
+            "status": "active",
         }, status_code=409)
     return RedirectResponse("/projects", status_code=303)

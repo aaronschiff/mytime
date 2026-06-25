@@ -6,6 +6,7 @@
   <div class="card">
     <strong><a href="/projects/{{ s.project.id }}">{{ s.project.client_name }} — {{ s.project.name }}</a></strong>
     <span class="muted">· {{ s.project.hourly_rate | money(currency) }}/h</span>
+    <a href="/projects/{{ s.project.id }}/invoices/new" style="margin-left:.5rem">New invoice</a>
     {% include "_budget_bar.html" %}
   </div>
 {% else %}

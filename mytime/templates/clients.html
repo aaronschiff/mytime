@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Clients — mytime{% endblock %}
+{% block content %}
+<h1>Clients</h1>
+{% if error %}
+  <p style="color:red">{{ error }}</p>
+{% endif %}
+<table>
+  <thead><tr><th>Client</th><th>Projects</th><th></th></tr></thead>
+  <tbody>
+  {% for c in clients %}
+    <tr>
+      <td><a href="/clients/{{ c.id }}">{{ c.name }}</a></td>
+      <td>{{ project_counts.get(c.id, 0) }}</td>
+      <td>
+        <form method="get" action="/clients/{{ c.id }}/edit" style="display:inline">
+          <button>Edit</button>
+        </form>
+        <form method="post" action="/clients/{{ c.id }}/delete" style="display:inline"
+              onsubmit="return confirm('Delete this client?')">
+          <button>Delete</button>
+        </form>
+      </td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

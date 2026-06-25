@@ -13,6 +13,9 @@
     <label>Currency symbol
       <input type="text" name="currency_symbol" maxlength="8" value="{{ settings.currency_symbol }}">
     </label>
+    <label>Invoice number prefix
+      <input type="text" name="invoice_prefix" maxlength="20" value="{{ settings.invoice_prefix or 'INV-' }}">
+    </label>
     <button type="submit">Save</button>
   </form>
 </section>

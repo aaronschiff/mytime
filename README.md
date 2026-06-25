@@ -76,12 +76,15 @@ The app binds to all interfaces on port 8000. No authentication layer — assume
 
 | Table | Purpose |
 | --- | --- |
+| `Client` | First-class client entity (name, unique) |
 | `Settings` | Global app defaults (bill rate, invoice prefix) |
 | `TaskType` | Categories (e.g. "Development", "Research") for grouping time |
-| `Project` | Billable projects with assigned budget and bill rate |
+| `Project` | Billable projects with assigned budget, bill rate, and `client_id` FK |
 | `TimeEntry` | Individual time records (linked to project + task type) |
 | `Invoice` | Invoice headers (project, period, total) with lock/void state |
 | `InvoiceLine` | Line items per task type (with applied second adjustments) |
+
+`Project` retains the `client_name` text field for backwards compatibility and display. `client_id` FK is additional metadata. When a client is renamed, all linked project `client_name` fields are updated to match.
 
 ## Project layout
 
@@ -89,7 +92,7 @@ The app binds to all interfaces on port 8000. No authentication layer — assume
 mytime/
   main.py                    # FastAPI app, startup
   db.py                      # SQLAlchemy engine, session factory
-  models.py                  # SQLAlchemy models (6 tables)
+  models.py                  # SQLAlchemy models (7 tables)
   clock.py                   # now(), today() (testable)
   format.py                  # formatters: hm, hms, money
   templating.py              # Jinja2 setup + filters
@@ -98,6 +101,7 @@ mytime/
     settings_service.py
     task_types.py
     projects.py
+    clients.py
     time_entries.py
     timers.py
     budget.py
@@ -107,7 +111,7 @@ mytime/
   static/                    # CSS, JavaScript (HTMX, timer-tick.js)
 tests/
   conftest.py                # pytest fixtures
-  test_*.py                  # Unit + integration tests (43 tests, all passing)
+  test_*.py                  # Unit + integration tests (53 tests, all passing)
 deploy/
   mytime.service             # systemd unit file
 ```
@@ -123,12 +127,14 @@ Full product design and API spec:
 
 ## Features
 
-- **Today page:** Live timer with start/stop buttons; auto-stop when adding new entry; running timer visible at top
-- **Projects:** CRUD with budget tracking; archive projects; guarded delete (cannot delete if has entries)
-- **Time entries:** Log manual entries; edit/delete (guarded by invoice lock)
-- **Invoicing:** Build invoice per project, group by task type, apply per-task adjustments, lock/void
-- **Overview:** Landing page with project cards showing budget remaining, uninvoiced time by task type
-- **Settings:** Global rate, invoice prefix, task type management
+- **Today page:** Live timer with start/stop; two-mode add (auto-start or save with time); invoiced entries show "Invoiced" label; click-to-edit elapsed time for stopped timers; solid green dot (no pulse)
+- **Projects:** CRUD with budget tracking; archive/unarchive; guarded delete; active/archived filter with visual indicator
+- **Time entries:** Log manual entries (single hh:mm field); edit/delete guarded by invoice lock; future-date confirmation; `from_page` cancel/save redirect
+- **Invoicing:** Build invoice per project, group by task type, single hh:mm per task, live dollar amounts and totals, unique editable invoice number; lock/void; budget context on build page
+- **Invoice list:** `/invoices` page with all invoices reverse-chronological (linked from nav)
+- **Overview:** Project cards with colored budget bar + legend swatches, over-budget in red, "New invoice" button per card
+- **Clients:** First-class entity with name; Clients list page (`/clients`) with project count, edit and guarded delete; client detail page showing per-client project list; auto-created from project client name on create/edit; rename propagates to all linked projects; delete blocked if any linked project has time entries
+- **Settings:** Global rate, currency symbol, invoice number prefix, task type management
 
 ## Key constraints
 

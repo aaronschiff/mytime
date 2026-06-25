@@ -1,8 +1,8 @@
 {% extends "base.html" %}
-{% block title %}Invoice #{{ invoice.id }} — mytime{% endblock %}
+{% block title %}Invoice {{ invoice.invoice_number or ('#' ~ invoice.id) }} — mytime{% endblock %}
 {% block content %}
-<h1>Invoice #{{ invoice.id }} — {{ project.client_name }} — {{ project.name }}</h1>
-<p class="muted">Created {{ invoice.created_at.date() }} · cut-off {{ invoice.cutoff_date }}
+<h1>Invoice {{ invoice.invoice_number or ('#' ~ invoice.id) }} — {{ project.client_name }} — {{ project.name }}</h1>
+<p class="muted">Created {{ invoice.created_at | date }} · cut-off {{ invoice.cutoff_date | date }}
   · rate {{ invoice.rate_snapshot | money(currency) }}/h</p>
 <table>
   <thead><tr><th>Task</th><th>Tracked</th><th>Invoiced</th><th>Amount</th></tr></thead>

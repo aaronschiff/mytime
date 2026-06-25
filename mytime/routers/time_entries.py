@@ -6,8 +6,9 @@ from sqlalchemy.orm import Session
 
 from mytime.clock import today
 from mytime.db import get_session
-from mytime.format import parse_hm
+from mytime.format import parse_duration
 from mytime.services import time_entries as te, projects, task_types
+from mytime.services.guards import EntryLockedError
 from mytime.templating import templates
 
 router = APIRouter()
@@ -31,40 +32,52 @@ def time_page(request: Request, project_id: str = "", session: Session = Depends
 
 
 @router.get("/time/new", response_class=HTMLResponse)
-def new_page(request: Request, session: Session = Depends(get_session)):
+def new_page(request: Request, from_page: str = "", session: Session = Depends(get_session)):
     ps, ts, _, _ = _lookup(session)
     return templates.TemplateResponse(request, "time_entry_form.html", {
         "entry": None, "all_projects": ps, "task_types": ts, "today": today().isoformat(),
+        "from_page": from_page or "/time",
     })
 
 
 @router.post("/time/new")
 def create(
     project_id: int = Form(...), task_type_id: int = Form(...),
-    entry_date: date = Form(...), hours: int = Form(0), minutes: int = Form(0),
-    notes: str = Form(""), session: Session = Depends(get_session),
+    entry_date: date = Form(...), duration: str = Form("00:00"),
+    notes: str = Form(""), from_page: str = Form(""),
+    session: Session = Depends(get_session),
 ):
-    te.create_entry(session, project_id, task_type_id, entry_date, parse_hm(hours, minutes), notes)
-    return RedirectResponse("/time", status_code=303)
+    te.create_entry(session, project_id, task_type_id, entry_date, parse_duration(duration), notes)
+    return RedirectResponse(from_page or "/time", status_code=303)
 
 
 @router.get("/time/{entry_id}/edit", response_class=HTMLResponse)
-def edit_page(entry_id: int, request: Request, session: Session = Depends(get_session)):
+def edit_page(entry_id: int, request: Request, from_page: str = "", session: Session = Depends(get_session)):
+    from fastapi.responses import Response
+    entry = te.get_entry(session, entry_id)
+    if entry.invoice_id is not None:
+        return Response("This time entry is locked to an invoice and cannot be edited.", status_code=403)
     ps, ts, _, _ = _lookup(session)
     return templates.TemplateResponse(request, "time_entry_form.html", {
-        "entry": te.get_entry(session, entry_id), "all_projects": ps, "task_types": ts,
+        "entry": entry, "all_projects": ps, "task_types": ts,
         "today": today().isoformat(),
+        "from_page": from_page or "/time",
     })
 
 
 @router.post("/time/{entry_id}/edit")
 def update(
-    entry_id: int, task_type_id: int = Form(...), entry_date: date = Form(...),
-    hours: int = Form(0), minutes: int = Form(0), notes: str = Form(""),
+    entry_id: int, project_id: int = Form(...), task_type_id: int = Form(...),
+    entry_date: date = Form(...), duration: str = Form("00:00"),
+    notes: str = Form(""), from_page: str = Form(""),
     session: Session = Depends(get_session),
 ):
-    te.update_entry(session, entry_id, task_type_id, entry_date, parse_hm(hours, minutes), notes)
-    return RedirectResponse("/time", status_code=303)
+    from fastapi.responses import Response
+    try:
+        te.update_entry(session, entry_id, project_id, task_type_id, entry_date, parse_duration(duration), notes)
+    except EntryLockedError:
+        return Response("This time entry is locked to an invoice and cannot be edited.", status_code=403)
+    return RedirectResponse(from_page or "/time", status_code=303)
 
 
 @router.post("/time/{entry_id}/delete")
