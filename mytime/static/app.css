@@ -1,0 +1,13 @@
+:root { --accent:#2563eb; --bg:#f8fafc; --line:#e2e8f0; --run:#16a34a; }
+* { box-sizing: border-box; }
+body { font-family: system-ui, sans-serif; margin:0; background:var(--bg); color:#0f172a; }
+.topnav { display:flex; gap:1rem; padding:.6rem 1rem; background:#fff; border-bottom:1px solid var(--line); }
+.topnav a { text-decoration:none; color:#334155; font-weight:600; }
+.topnav a:hover { color:var(--accent); }
+main { padding:1rem; max-width:960px; margin:0 auto; }
+table { border-collapse:collapse; width:100%; }
+th, td { text-align:left; padding:.4rem .6rem; border-bottom:1px solid var(--line); }
+button, input, select { font:inherit; padding:.35rem .5rem; }
+button { cursor:pointer; }
+.muted { color:#64748b; }
+.locked { color:#94a3b8; }
