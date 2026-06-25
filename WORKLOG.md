@@ -2,6 +2,18 @@
 
 ## 2026-06-25
 
+**What we worked on:** Deployed to `bbbee.local` for LAN testing.
+
+- Rsync'd project files to `/home/aaron/mytime/` on `bbbee.local` (Ubuntu Linux, x86_64).
+- Installed `uv` on the server (`/home/aaron/.local/bin/uv`); rebuilt venv for Linux from `uv.lock` (macOS venv can't be reused).
+- Adapted the systemd unit from the repo (`deploy/mytime.service`) to run as `aaron` user at `/home/aaron/mytime/` with DB at `/home/aaron/mytime/mytime.db`; installed at `/etc/systemd/system/mytime.service`, enabled on boot, started.
+- Port 8000 was blocked by ufw — added `ufw allow from 192.168.1.0/24 to any port 8000` (LAN-only, matching existing service rules on this host).
+- App accessible at `http://bbbee.local:8000/today`.
+
+---
+
+## 2026-06-25
+
 **What we worked on:** Full 10-task build executed via subagent-driven development; pushed to GitHub.
 
 - Executed all 10 tasks from `docs/superpowers/plans/2026-06-25-mytime.md` using parallel subagents with per-task review gates.

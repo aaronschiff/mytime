@@ -41,37 +41,28 @@ All tests pass on a clean working tree. Run before committing.
 
 ## Deployment
 
-### On a Debian LAN server
+### Current deployment: `bbbee.local`
 
-1. **Prepare the target machine:**
-   ```bash
-   sudo useradd -m mytime
-   sudo mkdir -p /opt/mytime
-   sudo chown mytime:mytime /opt/mytime
-   ```
+Running on `bbbee.local` (Ubuntu Linux, x86_64) as user `aaron`.
 
-2. **Copy the app and install uv:**
-   ```bash
-   sudo cp -r . /opt/mytime/
-   sudo chown -R mytime:mytime /opt/mytime
-   sudo install -m 755 ~/.local/bin/uv /usr/local/bin/uv
-   ```
+- Files: `/home/aaron/mytime/`
+- Database: `/home/aaron/mytime/mytime.db`
+- `uv`: `/home/aaron/.local/bin/uv`
+- Systemd unit: `/etc/systemd/system/mytime.service` (enabled, starts on boot)
+- URL: **http://bbbee.local:8000/today**
+- Firewall: ufw allows port 8000 from `192.168.1.0/24` only
 
-3. **Install and enable the systemd unit:**
-   ```bash
-   sudo cp deploy/mytime.service /etc/systemd/system/
-   sudo systemctl daemon-reload
-   sudo systemctl enable mytime
-   sudo systemctl start mytime
-   ```
+To redeploy after changes:
+```bash
+rsync -av --exclude='.git' --exclude='__pycache__' --exclude='*.pyc' --exclude='.pytest_cache' --exclude='*.db' --exclude='.env' . bbbee.local:~/mytime/
+ssh bbbee.local 'cd ~/mytime && /home/aaron/.local/bin/uv sync && sudo systemctl restart mytime'
+```
 
-4. **Check it's running:**
-   ```bash
-   curl http://localhost:8000/today
-   systemctl status mytime
-   ```
+### Generic LAN server setup
 
-The app binds to all interfaces on port 8000. Protect access via firewall rules (LAN only). There is no authentication layer; assume the network is trusted.
+The `deploy/mytime.service` unit file uses `/opt/mytime` and a dedicated `mytime` user. Adapt paths and `User=` for your target. Key steps: install `uv`, rsync files, rebuild venv with `uv sync`, install unit, open the firewall port for LAN.
+
+The app binds to all interfaces on port 8000. No authentication layer — assume the network is trusted.
 
 ## Architecture
 
