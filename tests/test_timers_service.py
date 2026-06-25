@@ -1,5 +1,6 @@
 from datetime import datetime, date
 from decimal import Decimal
+from mytime import clock
 from mytime.services import timers, projects, task_types
 
 
@@ -15,7 +16,7 @@ def test_add_timer_autostarts(session):
     e = timers.add_timer(session, p.id, t.id, None, at)
     assert e.running_since == at
     assert e.first_started_at == at
-    assert e.entry_date == at.date()
+    assert e.entry_date == clock.today()
     assert timers.running_timer(session).id == e.id
 
 
@@ -54,6 +55,6 @@ def test_todays_timers_sorted_by_first_start(session):
     p, t = _setup(session)
     a = timers.add_timer(session, p.id, t.id, None, datetime(2026, 6, 25, 9, 0, 0))
     b = timers.add_timer(session, p.id, t.id, None, datetime(2026, 6, 25, 8, 0, 0))
-    ids = [e.id for e in timers.todays_timers(session, date(2026, 6, 25))]
+    ids = [e.id for e in timers.todays_timers(session, clock.today())]
     # b started earlier in wall-clock but was added second; order by first_started_at
     assert ids == [a.id, b.id]

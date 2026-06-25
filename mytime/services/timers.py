@@ -50,7 +50,7 @@ def stop_timer(session: Session, entry_id: int, at: datetime) -> TimeEntry:
 def add_timer(session: Session, project_id: int, task_type_id: int, notes, at: datetime) -> TimeEntry:
     e = TimeEntry(
         project_id=project_id, task_type_id=task_type_id, notes=(notes or None),
-        entry_date=at.date(), seconds=0,
+        entry_date=today(), seconds=0,
     )
     session.add(e)
     session.commit()

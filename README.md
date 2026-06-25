@@ -42,6 +42,7 @@ The `deploy/` directory contains systemd unit files for running mytime as a pers
 **Recommended layout:**
 - Files: `/opt/mytime/`
 - Database: `/opt/mytime/mytime.db` (or set `MYTIME_DB_URL` to any SQLite path)
+- Timezone: set `MYTIME_TIMEZONE` to a [tz database name](https://en.wikipedia.org/wiki/List_of_tz_database_time_zones) (e.g. `Pacific/Auckland`) if your server runs UTC but you want "today" to reflect your local date. If unset, the server OS timezone is used.
 - Service user: `mytime` (create with `sudo useradd --system --no-create-home mytime`)
 
 **Install the service:**
@@ -58,7 +59,7 @@ The app binds to all interfaces on port 8000 by default. No authentication layer
 - **Design principles:** All non-trivial logic in `mytime/services/` as pure functions; templates only for view logic
 - **Durations:** Stored as integer seconds; displayed as `HH:MM` (rounded to nearest minute)
 - **Money:** `Decimal` throughout (SQLAlchemy `Numeric`), never float
-- **Clock:** `mytime.clock.now()` / `today()` wrap datetime for testability
+- **Clock:** `mytime.clock.now()` / `today()` wrap datetime for testability. `today()` honours the `MYTIME_TIMEZONE` env var (a tz database name, e.g. `Pacific/Auckland`); falls back to the server OS timezone.
 - **GST rate:** stored as a percentage value (e.g. `15` = 15%, not `0.15`)
 
 ## Data model
