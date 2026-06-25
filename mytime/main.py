@@ -13,6 +13,13 @@ try:  # filters require mytime.format (added in Task 2)
 except Exception:
     pass
 
+from mytime.db import init_db
+
+
+@app.on_event("startup")
+def _startup() -> None:
+    init_db()
+
 
 @app.get("/", response_class=HTMLResponse)
 def home(request: Request):
