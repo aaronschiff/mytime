@@ -30,11 +30,7 @@ uv run uvicorn mytime.main:app --reload
 ## Running tests
 
 ```bash
-# Run all tests with verbose output
 uv run pytest -v
-
-# Run a specific test file
-uv run pytest tests/test_settings.py -v
 ```
 
 All tests pass on a clean working tree. Run before committing.
@@ -58,19 +54,15 @@ rsync -av --exclude='.git' --exclude='__pycache__' --exclude='*.pyc' --exclude='
 ssh bbbee.local 'cd ~/mytime && /home/aaron/.local/bin/uv sync && sudo systemctl restart mytime'
 ```
 
-### Generic LAN server setup
-
-The `deploy/mytime.service` unit file uses `/opt/mytime` and a dedicated `mytime` user. Adapt paths and `User=` for your target. Key steps: install `uv`, rsync files, rebuild venv with `uv sync`, install unit, open the firewall port for LAN.
-
 The app binds to all interfaces on port 8000. No authentication layer — assume the network is trusted.
 
 ## Architecture
 
 - **Design principles:** All non-trivial logic in `mytime/services/` as pure functions; templates only for view logic
-- **Durations:** Stored as integer seconds; display as hours:minutes
+- **Durations:** Stored as integer seconds; displayed as `HH:MM` (rounded to nearest minute)
 - **Money:** `Decimal` throughout (SQLAlchemy `Numeric`), never float
 - **Clock:** `mytime.clock.now()` / `today()` wrap datetime for testability
-- **Deployment target:** Systemd service on Debian, LAN-only, sqlite:////opt/mytime/mytime.db
+- **GST rate:** stored as a percentage value (e.g. `15` = 15%, not `0.15`)
 
 ## Data model
 
@@ -79,42 +71,126 @@ The app binds to all interfaces on port 8000. No authentication layer — assume
 | `Client` | First-class client entity (name, unique) |
 | `Settings` | Global app defaults (bill rate, currency, default GST rate) |
 | `TaskType` | Categories (e.g. "Development", "Research") for grouping time |
-| `Project` | Billable projects with assigned budget, bill rate, and `client_id` FK |
+| `Project` | Billable projects with budget, bill rate, `client_id` FK, and optional GST |
 | `TimeEntry` | Individual time records (linked to project + task type) |
-| `Invoice` | Invoice headers (project, period, total) with lock/void state |
-| `InvoiceLine` | Line items per task type (with applied second adjustments) |
+| `Invoice` | Invoice headers (project, period, total, optional GST amount) |
+| `InvoiceLine` | Line items per task type (tracked vs invoiced seconds, amount) |
 
-`Project` retains the `client_name` text field for backwards compatibility and display. `client_id` FK is additional metadata. When a client is renamed, all linked project `client_name` fields are updated to match.
+`Project` retains the `client_name` text field for display; `client_id` FK is additional metadata. When a client is renamed, all linked project `client_name` fields are updated.
+
+### Timer mechanics
+
+`TimeEntry` has two fields that work together:
+- `seconds` — accumulated seconds from all completed runs
+- `running_since` — set to the start datetime while timer is live, `None` when stopped
+
+Live elapsed = `seconds + (now - running_since)`. The `timers.live_elapsed()` service function handles this. Stopping a timer flushes the running delta into `seconds` and clears `running_since`.
+
+### Schema migrations
+
+`db.py` holds a `_MIGRATIONS` list of `ALTER TABLE` statements. Each is executed with `try/except` on startup (idempotent — fails silently if the column already exists). To add a column: append the SQL to `_MIGRATIONS` **and** add the field to `models.py`. `Base.metadata.create_all` handles new tables; `_MIGRATIONS` handles new columns on existing tables.
 
 ## Project layout
 
 ```
 mytime/
-  main.py                    # FastAPI app, startup
-  db.py                      # SQLAlchemy engine, session factory
-  models.py                  # SQLAlchemy models (7 tables)
-  clock.py                   # now(), today() (testable)
-  format.py                  # formatters: hm, hms, money
-  templating.py              # Jinja2 setup + filters
-  routers/                   # HTTP endpoints
-  services/                  # Pure business logic
+  main.py           # FastAPI app + lifespan (calls init_db)
+  db.py             # Engine, session factory, _MIGRATIONS list
+  models.py         # SQLAlchemy models (7 tables)
+  clock.py          # now(), today() — wrap datetime for test injection
+  format.py         # parse_duration, fmt_hm, fmt_hms, money
+  templating.py     # Jinja2 setup, registers filters (hm, hms, money, date)
+  routers/          # One file per feature area; thin — delegate to services
+    today.py        # /today — live timers, add/start/stop/set-time/delete
+    time_entries.py # /time — list, new, edit, delete
+    projects.py     # /projects — CRUD, status, delete
+    invoices.py     # /invoices and /projects/{id}/invoices/*
+    clients.py      # /clients — list, detail, edit, delete
+    settings.py     # /settings — defaults, task types
+    overview.py     # / — project summary cards
+  services/         # Pure business logic, no HTTP concerns
+    timers.py       # start/stop/add timer, live_elapsed, todays_timers
+    time_entries.py # create/update/delete/list entries
+    projects.py     # create/update/set_status/list/get
+    budget.py       # project_summary → ProjectSummary dataclass
+    invoicing.py    # build preview, create, void, list, GST calc
     settings_service.py
     task_types.py
-    projects.py
     clients.py
-    time_entries.py
-    timers.py
-    budget.py
-    invoicing.py
-    guards.py
-  templates/                 # Jinja2 templates
-  static/                    # CSS, JavaScript (HTMX, timer-tick.js)
+    guards.py       # delete guards; raises ProjectHasInvoicesError, EntryLockedError, ClientHasTimeError
+  templates/
+    base.html                  # Nav + layout shell
+    today.html                 # Today page (includes _today_body.html)
+    _today_body.html           # HTMX swap target (#timers); ctx: rows, total_seconds, names, task_names
+    _project_detail_body.html  # Included in project_detail.html; ctx: project, entries, invoices, task_names, currency
+    _budget_bar.html           # Included in overview.html and project_detail.html; ctx variable is `s` (ProjectSummary)
+    project_detail.html        # ctx includes `s` as alias for summary (used by _budget_bar.html)
+    time_entry_form.html       # New + edit form; accepts preset_project_id for pre-selection
+    invoice_build.html         # Live-calculating invoice builder with optional GST summary
+    [others named for their route]
+  static/
+    app.css         # All styles
+    timer-tick.js   # Runs every second; updates .elapsed spans and total; fmtHms → HH:MM
+    htmx.min.js
 tests/
-  conftest.py                # pytest fixtures
-  test_*.py                  # Unit + integration tests (53 tests, all passing)
+  conftest.py       # In-memory SQLite fixture + TestClient with session override
+  test_*.py         # 53 tests, all passing
 deploy/
-  mytime.service             # systemd unit file
+  mytime.service    # systemd unit (generic /opt/mytime path)
+  backup.py         # 28-day tiered DB snapshot script
 ```
+
+## Key patterns
+
+### `from_page` redirect
+Forms that can be reached from multiple pages pass `from_page` as a hidden input or query param. The router redirects to `from_page` on success, or defaults to a sensible fallback. Cancel buttons use `onclick='location.href=...'` to navigate without submitting.
+
+### HTMX partial reloads (today view)
+The today view wraps the timer list in `<div id="timers">`. Start/stop/set-time/delete all POST via HTMX with `hx-target="#timers" hx-swap="innerHTML"` and return just the `_today_body.html` partial — no full page reload.
+
+### `ProjectSummary` and `s` variable
+`budget.project_summary()` returns a `ProjectSummary` dataclass with `invoiced_value`, `uninvoiced_value`, `budget_remaining`, `over_budget`, `exceedance`, `total_tracked_seconds`. In templates it's always bound to `s` (both overview loop variable and `project_detail.html` context key).
+
+### `parse_duration`
+`format.parse_duration(str) → int | None`
+- Empty string → `0`
+- Plain integer (e.g. `"2"`) → hours × 3600
+- `"hh:mm"` → seconds; returns `None` if minutes > 59 or non-numeric
+- Returns `None` for any other invalid input — callers must handle `None`
+
+### Duration display (`hm` filter)
+`fmt_hm` rounds to the nearest minute (adds 30s before dividing), then zero-pads both hours and minutes: `"02:30"` not `"2:30"`. Use `| hm` everywhere. The `| hms` filter (H:MM:SS) exists but is not used in templates.
+
+### CSS utility classes
+| Class | Use |
+|---|---|
+| `btn-save` | Blue filled submit button |
+| `btn-cancel` | Grey outlined cancel button |
+| `muted` | Secondary/dimmed text (`color: #64748b`) |
+| `locked` | Greyed-out invoiced row |
+| `running` | Green-highlighted active timer row |
+| `seg-inv / seg-unv / seg-rem / seg-over` | Budget bar segments (blue/light-blue/grey/red) |
+| `swatch-inv/unv/rem/over` | Matching 10px legend squares |
+| `card` | White bordered rounded container |
+
+## Features
+
+- **Today page:** Live timer with start/stop; two-mode add (auto-start or save with time); click-to-edit elapsed time (HH:MM); keyboard shortcuts: `s` stop/start, `n` focus new-entry form
+- **Projects:** CRUD with budget tracking; archive/unarchive; guarded delete; GST toggle per project; archived projects block invoice creation and time entry editing
+- **Time entries:** Log manual entries (hh:mm or plain hours); edit/delete guarded by invoice lock and project archived status; future-date confirmation; notes truncated in list
+- **Invoicing:** Build per project, group by task type, live dollar amounts; GST breakdown when enabled; auto-suggested numeric invoice numbers; void blocked for archived projects
+- **Invoice list:** `/invoices` — all invoices reverse-chronological
+- **Overview:** Project cards with budget bar; over-budget in red with exceedance; remaining shown with percentage
+- **Clients:** List with project count and total invoiced; detail with Archive/Delete per project; rename propagates to all linked projects
+- **Settings:** Default hourly rate, currency symbol, default GST rate, task type management
+
+## Key constraints
+
+- Single user, no authentication — deploy on trusted LAN only
+- SQLite; no migration framework — use `_MIGRATIONS` in `db.py` for schema changes
+- All time in seconds internally; display as HH:MM rounded to nearest minute
+- All money as `Decimal`; no floating-point arithmetic
+- GST rates stored as percentages (e.g. `15` not `0.15`)
 
 ## Repository
 
@@ -124,22 +200,3 @@ https://github.com/aaronschiff/mytime (private)
 
 Full product design and API spec:  
 [docs/superpowers/specs/2026-06-25-mytime-time-tracking-billing-design.md](docs/superpowers/specs/2026-06-25-mytime-time-tracking-billing-design.md)
-
-## Features
-
-- **Today page:** Live timer with start/stop; two-mode add (auto-start or save with time); invoiced entries show "Invoiced" label; click-to-edit elapsed time (HH:MM, no seconds); solid green dot (no pulse)
-- **Projects:** CRUD with budget tracking; archive/unarchive; guarded delete; active/archived filter; GST toggle per project (enabled/rate); archived projects block invoice creation and time entry editing
-- **Time entries:** Log manual entries (hh:mm or plain hours); edit/delete guarded by invoice lock and project archived status; future-date confirmation; `from_page` cancel/save redirect; notes truncated in list
-- **Invoicing:** Build invoice per project, group by task type, single hh:mm per task, live dollar amounts; GST breakdown (subtotal/GST/total incl. GST) when enabled; auto-suggested numeric invoice numbers; lock/void (blocked for archived projects); budget context on build page
-- **Invoice list:** `/invoices` page with all invoices reverse-chronological (linked from nav)
-- **Overview:** Project cards with colored budget bar + legend swatches; over-budget in red (label and bar segment); remaining budget shown with percentage; "New invoice" button per card
-- **Clients:** First-class entity; Clients list with project count and total invoiced; client detail with Archive/Delete buttons per project; auto-created from project client name; rename propagates; delete blocked if time entries exist
-- **Settings:** Global rate, currency symbol, default GST rate, task type management (invoice number prefix removed)
-
-## Key constraints
-
-- Single user, no authentication — deploy on trusted LAN only
-- Systemd unit runs as `mytime` user, watches service for auto-restart
-- SQLite database; no migration tooling (schema in `models.py`)
-- All time in seconds internally; display as hours:minutes
-- All money as `Decimal`; no floating-point arithmetic
