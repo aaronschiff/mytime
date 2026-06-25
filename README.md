@@ -37,24 +37,21 @@ All tests pass on a clean working tree. Run before committing.
 
 ## Deployment
 
-### Current deployment: `bbbee.local`
+The `deploy/` directory contains systemd unit files for running mytime as a persistent service.
 
-Running on `bbbee.local` (Ubuntu Linux, x86_64) as user `aaron`.
+**Recommended layout:**
+- Files: `/opt/mytime/`
+- Database: `/opt/mytime/mytime.db` (or set `MYTIME_DB_URL` to any SQLite path)
+- Service user: `mytime` (create with `sudo useradd --system --no-create-home mytime`)
 
-- Files: `/home/aaron/mytime/`
-- Database: `/home/aaron/mytime/mytime.db`
-- `uv`: `/home/aaron/.local/bin/uv`
-- Systemd unit: `/etc/systemd/system/mytime.service` (enabled, starts on boot)
-- URL: **http://bbbee.local:8000/today**
-- Firewall: ufw allows port 8000 from `192.168.1.0/24` only
-
-To redeploy after changes:
+**Install the service:**
 ```bash
-rsync -av --exclude='.git' --exclude='__pycache__' --exclude='*.pyc' --exclude='.pytest_cache' --exclude='*.db' --exclude='.env' . bbbee.local:~/mytime/
-ssh bbbee.local 'cd ~/mytime && /home/aaron/.local/bin/uv sync && sudo systemctl restart mytime'
+sudo cp deploy/mytime.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now mytime
 ```
 
-The app binds to all interfaces on port 8000. No authentication layer — assume the network is trusted.
+The app binds to all interfaces on port 8000 by default. No authentication layer — intended for trusted LAN use only. Restrict access with a firewall if needed (e.g. `ufw allow from 192.168.0.0/16 to any port 8000`).
 
 ## Architecture
 
@@ -195,9 +192,4 @@ The today view wraps the timer list in `<div id="timers">`. Start/stop/set-time/
 
 ## Repository
 
-https://github.com/aaronschiff/mytime (private)
-
-## Design spec
-
-Full product design and API spec:  
-[docs/superpowers/specs/2026-06-25-mytime-time-tracking-billing-design.md](docs/superpowers/specs/2026-06-25-mytime-time-tracking-billing-design.md)
+https://github.com/aaronschiff/mytime

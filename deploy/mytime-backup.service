@@ -4,7 +4,9 @@ After=local-fs.target
 
 [Service]
 Type=oneshot
-User=aaron
-ExecStart=/usr/bin/python3 /home/aaron/mytime/deploy/backup.py
+User=mytime
+Environment=MYTIME_DB_PATH=/opt/mytime/mytime.db
+Environment=MYTIME_BACKUP_DIR=/var/backups/mytime
+ExecStart=/usr/local/bin/uv run python /opt/mytime/deploy/backup.py
 StandardOutput=journal
 StandardError=journal

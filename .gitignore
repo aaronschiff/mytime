@@ -3,3 +3,6 @@ __pycache__/
 .venv/
 mytime.db
 .pytest_cache/
+WORKLOG.md
+TESTING*.md
+docs/superpowers/

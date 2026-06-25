@@ -1,7 +1,7 @@
 [project]
 name = "mytime"
 version = "0.1.0"
-description = "Add your description here"
+description = "Single-user time tracking and billing app for solo consultants"
 requires-python = ">=3.12"
 dependencies = [
     "fastapi>=0.138.0",

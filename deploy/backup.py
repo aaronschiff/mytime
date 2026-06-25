@@ -4,14 +4,19 @@
 Retention policy:
   - Last 28 days: keep each daily snapshot
   - Older: keep one snapshot per 28-day period (the newest in each period)
+
+Configure via environment variables:
+  MYTIME_DB_PATH   — path to mytime.db (default: /opt/mytime/mytime.db)
+  MYTIME_BACKUP_DIR — directory for backup files (default: /var/backups/mytime)
 """
+import os
 import re
 import shutil
 from datetime import date, timedelta
 from pathlib import Path
 
-DB_PATH = Path("/home/aaron/mytime/mytime.db")
-BACKUP_DIR = Path("/data/mytime-backup")
+DB_PATH = Path(os.environ.get("MYTIME_DB_PATH", "/opt/mytime/mytime.db"))
+BACKUP_DIR = Path(os.environ.get("MYTIME_BACKUP_DIR", "/var/backups/mytime"))
 _PATTERN = re.compile(r"^mytime-(\d{4}-\d{2}-\d{2})\.db$")
 
 
