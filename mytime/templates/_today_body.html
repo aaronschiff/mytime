@@ -1,0 +1,25 @@
+<p>Total today: <strong data-total-seconds="{{ total_seconds }}">{{ total_seconds | hms }}</strong></p>
+<table>
+  <tbody>
+  {% for row in rows %}
+    <tr class="{{ 'running' if row.running }}">
+      <td>{{ names[row.entry.project_id] }} · {{ task_names[row.entry.task_type_id] }}</td>
+      <td><span class="elapsed" data-running="{{ 1 if row.running else 0 }}"
+                data-base="{{ row.base }}" data-since="{{ row.since_iso }}">{{ row.elapsed | hms }}</span></td>
+      <td>
+        {% if row.running %}
+          <form method="post" action="/today/{{ row.entry.id }}/stop" hx-post="/today/{{ row.entry.id }}/stop"
+                hx-target="#timers" hx-swap="innerHTML" style="display:inline"><button>Stop</button></form>
+        {% else %}
+          <form method="post" action="/today/{{ row.entry.id }}/start" hx-post="/today/{{ row.entry.id }}/start"
+                hx-target="#timers" hx-swap="innerHTML" style="display:inline"><button>Start</button></form>
+        {% endif %}
+        <a href="/time/{{ row.entry.id }}/edit">Edit</a>
+        <form method="post" action="/today/{{ row.entry.id }}/delete" hx-post="/today/{{ row.entry.id }}/delete"
+              hx-target="#timers" hx-swap="innerHTML" style="display:inline"
+              hx-confirm="Delete this timer?"><button>Delete</button></form>
+      </td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>

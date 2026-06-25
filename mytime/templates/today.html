@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}Today — mytime{% endblock %}
+{% block content %}
+<h1>Today <span class="muted">{{ day }}</span></h1>
+<form method="post" action="/today/add">
+  <select name="project_id" required>
+    <option value="" disabled selected>Project…</option>
+    {% for p in all_projects %}<option value="{{ p.id }}">{{ p.client_name }} — {{ p.name }}</option>{% endfor %}
+  </select>
+  <select name="task_type_id" required>
+    <option value="" disabled selected>Task…</option>
+    {% for t in task_types %}<option value="{{ t.id }}">{{ t.name }}</option>{% endfor %}
+  </select>
+  <input type="text" name="notes" placeholder="Notes (optional)">
+  <button type="submit">Add &amp; start</button>
+</form>
+<div id="timers">{% include "_today_body.html" %}</div>
+{% endblock %}
+{% block scripts %}<script src="/static/timer-tick.js" defer></script>{% endblock %}

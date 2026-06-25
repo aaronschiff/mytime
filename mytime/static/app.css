@@ -11,3 +11,7 @@ button, input, select { font:inherit; padding:.35rem .5rem; }
 button { cursor:pointer; }
 .muted { color:#64748b; }
 .locked { color:#94a3b8; }
+tr.running { background:#dcfce7; }
+tr.running .elapsed { color:var(--run); font-weight:700; }
+tr.running td:first-child::before { content:"● "; color:var(--run); animation:pulse 1.2s infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
