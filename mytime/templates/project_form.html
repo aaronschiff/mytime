@@ -16,13 +16,44 @@
   </label></p>
   <p><label>Project name<br><input name="name" required value="{{ project.name if project else '' }}" style="width:100%"></label></p>
   <p><label>Hourly rate<br>
-    <span>{{ currency }}</span><input type="number" step="0.01" name="hourly_rate"
-       value="{{ '%.2f'|format(project.hourly_rate) if project else '%.2f'|format(default_rate) }}" style="width:8em"></label></p>
+    <span>{{ currency }}</span><input type="number" step="1" name="hourly_rate"
+       value="{{ (project.hourly_rate | float) | round | int if project else (default_rate | float) | round | int }}"
+       style="width:8em"></label></p>
   <p><label>Budget (optional)<br>
-    <span>{{ currency }}</span><input type="number" step="0.01" name="budget"
-       value="{{ '%.2f'|format(project.budget) if project and project.budget is not none else '' }}" style="width:8em"></label></p>
+    <span>{{ currency }}</span><input type="number" step="1" name="budget"
+       value="{{ (project.budget | float) | round | int if project and project.budget is not none else '' }}"
+       style="width:8em"></label></p>
   <p><label>Description (optional)<br><textarea name="description" rows="4" style="width:100%">{{ project.description if project and project.description else '' }}</textarea></label></p>
-  <button type="submit">Save</button>
-  <a href="{{ from_page or '/projects' }}">Cancel</a>
+  <p><label style="display:flex;align-items:center;gap:.5rem">
+    <input type="checkbox" name="gst_enabled" value="1" id="gst-cb" {{ 'checked' if project and project.gst_enabled }}>
+    Apply GST to invoices
+  </label></p>
+  <p id="gst-rate-row" {% if not (project and project.gst_enabled) %}style="display:none"{% endif %}>
+    <label>GST rate (%)<br>
+      <input type="number" step="0.1" name="gst_rate" id="gst-rate"
+             value="{{ project.gst_rate if project and project.gst_rate is not none else '' }}"
+             placeholder="e.g. 15" style="width:6em">
+    </label>
+  </p>
+  <button type="submit" class="btn-save">Save</button>
+  <button type="button" class="btn-cancel" onclick='location.href={{ (from_page or "/projects") | tojson }}'>Cancel</button>
 </form>
+{% endblock %}
+{% block scripts %}
+<script>
+(function() {
+  var cb = document.getElementById('gst-cb');
+  var row = document.getElementById('gst-rate-row');
+  var rateInput = document.getElementById('gst-rate');
+  var defaultRate = {{ default_gst_rate | tojson }};
+  cb.addEventListener('change', function() {
+    if (cb.checked) {
+      row.style.display = '';
+      if (!rateInput.value && defaultRate) rateInput.value = defaultRate;
+    } else {
+      row.style.display = 'none';
+    }
+  });
+})();
+</script>
 {% endblock %}

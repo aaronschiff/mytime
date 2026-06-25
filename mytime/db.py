@@ -14,6 +14,10 @@ _MIGRATIONS = [
     "ALTER TABLE settings ADD COLUMN invoice_prefix VARCHAR(20) DEFAULT 'INV-'",
     "ALTER TABLE invoice ADD COLUMN invoice_number VARCHAR(50)",
     "ALTER TABLE project ADD COLUMN client_id INTEGER REFERENCES client(id)",
+    "ALTER TABLE settings ADD COLUMN default_gst_rate NUMERIC(5,2)",
+    "ALTER TABLE project ADD COLUMN gst_enabled BOOLEAN NOT NULL DEFAULT 0",
+    "ALTER TABLE project ADD COLUMN gst_rate NUMERIC(5,2)",
+    "ALTER TABLE invoice ADD COLUMN gst_amount NUMERIC(12,2)",
 ]
 
 

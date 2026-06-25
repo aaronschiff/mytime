@@ -6,12 +6,13 @@
   <p style="color:red">{{ error }}</p>
 {% endif %}
 <table>
-  <thead><tr><th>Client</th><th>Projects</th><th></th></tr></thead>
+  <thead><tr><th>Client</th><th>Projects</th><th>Total invoiced</th><th></th></tr></thead>
   <tbody>
   {% for c in clients %}
     <tr>
       <td><a href="/clients/{{ c.id }}">{{ c.name }}</a></td>
       <td>{{ project_counts.get(c.id, 0) }}</td>
+      <td>{{ total_invoiced.get(c.id, 0) | money(currency) }}</td>
       <td>
         <form method="get" action="/clients/{{ c.id }}/edit" style="display:inline">
           <button>Edit</button>

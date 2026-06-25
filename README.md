@@ -77,7 +77,7 @@ The app binds to all interfaces on port 8000. No authentication layer — assume
 | Table | Purpose |
 | --- | --- |
 | `Client` | First-class client entity (name, unique) |
-| `Settings` | Global app defaults (bill rate, invoice prefix) |
+| `Settings` | Global app defaults (bill rate, currency, default GST rate) |
 | `TaskType` | Categories (e.g. "Development", "Research") for grouping time |
 | `Project` | Billable projects with assigned budget, bill rate, and `client_id` FK |
 | `TimeEntry` | Individual time records (linked to project + task type) |
@@ -127,14 +127,14 @@ Full product design and API spec:
 
 ## Features
 
-- **Today page:** Live timer with start/stop; two-mode add (auto-start or save with time); invoiced entries show "Invoiced" label; click-to-edit elapsed time for stopped timers; solid green dot (no pulse)
-- **Projects:** CRUD with budget tracking; archive/unarchive; guarded delete; active/archived filter with visual indicator
-- **Time entries:** Log manual entries (single hh:mm field); edit/delete guarded by invoice lock; future-date confirmation; `from_page` cancel/save redirect
-- **Invoicing:** Build invoice per project, group by task type, single hh:mm per task, live dollar amounts and totals, unique editable invoice number; lock/void; budget context on build page
+- **Today page:** Live timer with start/stop; two-mode add (auto-start or save with time); invoiced entries show "Invoiced" label; click-to-edit elapsed time (HH:MM, no seconds); solid green dot (no pulse)
+- **Projects:** CRUD with budget tracking; archive/unarchive; guarded delete; active/archived filter; GST toggle per project (enabled/rate); archived projects block invoice creation and time entry editing
+- **Time entries:** Log manual entries (hh:mm or plain hours); edit/delete guarded by invoice lock and project archived status; future-date confirmation; `from_page` cancel/save redirect; notes truncated in list
+- **Invoicing:** Build invoice per project, group by task type, single hh:mm per task, live dollar amounts; GST breakdown (subtotal/GST/total incl. GST) when enabled; auto-suggested numeric invoice numbers; lock/void (blocked for archived projects); budget context on build page
 - **Invoice list:** `/invoices` page with all invoices reverse-chronological (linked from nav)
-- **Overview:** Project cards with colored budget bar + legend swatches, over-budget in red, "New invoice" button per card
-- **Clients:** First-class entity with name; Clients list page (`/clients`) with project count, edit and guarded delete; client detail page showing per-client project list; auto-created from project client name on create/edit; rename propagates to all linked projects; delete blocked if any linked project has time entries
-- **Settings:** Global rate, currency symbol, invoice number prefix, task type management
+- **Overview:** Project cards with colored budget bar + legend swatches; over-budget in red (label and bar segment); remaining budget shown with percentage; "New invoice" button per card
+- **Clients:** First-class entity; Clients list with project count and total invoiced; client detail with Archive/Delete buttons per project; auto-created from project client name; rename propagates; delete blocked if time entries exist
+- **Settings:** Global rate, currency symbol, default GST rate, task type management (invoice number prefix removed)
 
 ## Key constraints
 

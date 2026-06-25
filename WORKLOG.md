@@ -2,6 +2,56 @@
 
 ## 2026-06-25
 
+**What we worked on:** Clarification fix — project list columns corrected; budget/invoiced/uninvoiced added to project and client detail lists.
+
+- TESTING-2.md item "Remove the rate column, budget, invoiced and uninvoiced total columns" was misread; intent was to *remove rate* and *add* budget/invoiced/uninvoiced.
+- Added `summaries` dict (project_id → ProjectSummary) to `list_page` in `routers/projects.py` and `detail_page` in `routers/clients.py`.
+- Updated `projects.html` and `client_detail.html` to show Budget (— when none), Invoiced, and Uninvoiced columns.
+- Fixed missing `summaries` in the delete-blocked error path in `routers/projects.py` (caught by existing test).
+- 53 tests still passing.
+
+---
+
+## 2026-06-25
+
+**What we worked on:** Second round of user testing — all bugs, GST feature, and UI polish from TESTING-2.md resolved; 53 tests still passing.
+
+- **Bug fixes:**
+  - Edit on running timer now auto-stops the timer first (captures elapsed time into `seconds`), so no time is lost.
+  - `parse_duration` now returns `None` for invalid input (text, minutes > 59) and handles plain numbers (e.g. `"2"` → 7200 seconds). JS validation added to today view and time entry form.
+  - Edit button hidden for time entries belonging to archived projects (server-side 403 guard + template check via `project_statuses` dict).
+  - Invoice creation and void blocked for archived projects (server-side redirect + template guard).
+  - "New time entry" link from project detail now passes `project_id` query param to pre-select the project in the form.
+- **GST feature:**
+  - Added `default_gst_rate` (nullable Decimal) to `Settings` model.
+  - Added `gst_enabled` (bool, default false) and `gst_rate` (nullable Decimal) to `Project` model.
+  - Added `gst_amount` (nullable Decimal) to `Invoice` model.
+  - All three new columns added via `_MIGRATIONS` in `db.py` for existing databases.
+  - Settings page: new "Default GST rate" field.
+  - Project form: GST checkbox + rate field (JS shows/hides rate row; prefills from settings default).
+  - Invoicing service: computes `gst_amount` when `project.gst_enabled` and `project.gst_rate` are set.
+  - Invoice build page: live GST summary (subtotal, GST, total incl. GST).
+  - Invoice view: shows three-row totals footer when `gst_amount` is present.
+- **UI polish:**
+  - Cancel is now always a `<button>` (not a hyperlink) across all forms.
+  - Save buttons have blue fill; Cancel buttons have grey outline (`.btn-save` / `.btn-cancel` CSS classes).
+  - Invoice number prefix removed from settings and invoice build; build page auto-suggests next numeric invoice number.
+  - Today view total and running timer now display `HH:MM` (no seconds); `timer-tick.js` `fmtHms` updated to match.
+  - Project form hourly rate and budget input shows integer dollars (no `.00`). `step="1"`.
+  - Settings defaults each on their own `<p>` line instead of floating inline.
+  - Textarea gets `font:inherit` via global CSS.
+  - Projects list and client detail list: Rate column removed.
+  - Client detail list: Archive/Unarchive + Delete buttons added (with `from_page` redirecting back).
+  - Time entries list: notes truncated to 50 chars with `…`.
+  - Budget bar: over-budget portion shown as red `seg-over` segment; non-over-budget shows percentage remaining in brackets.
+  - Clients list: "Total invoiced" column added (computed from Invoice records via `project→client_id` join).
+  - Invoice view: void button has `margin-top:1rem`.
+- Test updates: `test_parse_duration` updated for new return semantics (`None` vs `0`); `test_save_settings` updated for integer rate display.
+
+---
+
+## 2026-06-25
+
 **What we worked on:** Full TESTING.md pass — all bugs, backlog items, and new features resolved; 53 tests passing.
 
 - Worked through every item in `TESTING.md`; all marked `[x]`.

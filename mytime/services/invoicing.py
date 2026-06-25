@@ -73,6 +73,8 @@ def create_invoice(
     for e in entries:
         e.invoice_id = invoice.id
     invoice.total_amount = _q(total)
+    if project.gst_enabled and project.gst_rate:
+        invoice.gst_amount = _q(total * project.gst_rate / Decimal("100"))
     session.commit()
     return invoice
 

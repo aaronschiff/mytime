@@ -12,11 +12,21 @@
         <td>{{ l.invoiced_seconds | hm }}</td><td>{{ l.amount | money(currency) }}</td></tr>
   {% endfor %}
   </tbody>
+  {% if invoice.gst_amount %}
+  <tfoot>
+    <tr><th colspan="3">Subtotal (excl. GST)</th><th>{{ invoice.total_amount | money(currency) }}</th></tr>
+    <tr><th colspan="3">GST</th><th>{{ invoice.gst_amount | money(currency) }}</th></tr>
+    <tr><th colspan="3"><strong>Total (incl. GST)</strong></th><th><strong>{{ (invoice.total_amount + invoice.gst_amount) | money(currency) }}</strong></th></tr>
+  </tfoot>
+  {% else %}
   <tfoot><tr><th colspan="3">Total</th><th>{{ invoice.total_amount | money(currency) }}</th></tr></tfoot>
+  {% endif %}
 </table>
-<form method="post" action="/invoices/{{ invoice.id }}/void"
+{% if project.status == 'active' %}
+<form method="post" action="/invoices/{{ invoice.id }}/void" style="margin-top:1rem"
       onsubmit="return confirm('Void this invoice and unlock its entries?')">
   <button>Void invoice</button>
 </form>
+{% endif %}
 <p><a href="/projects/{{ project.id }}">Back to project</a></p>
 {% endblock %}

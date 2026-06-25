@@ -41,6 +41,9 @@ def test_parse_duration():
     assert fmt.parse_duration("0:00") == 0
     assert fmt.parse_duration("00:00") == 0
     assert fmt.parse_duration("2:45") == 2 * 3600 + 45 * 60
-    assert fmt.parse_duration("invalid") == 0
+    assert fmt.parse_duration("invalid") is None   # non-numeric returns None
     assert fmt.parse_duration("") == 0
-    assert fmt.parse_duration("1:60") == 0  # invalid minutes
+    assert fmt.parse_duration("1:60") is None       # invalid minutes returns None
+    assert fmt.parse_duration("2") == 7200          # plain hours
+    assert fmt.parse_duration("0") == 0
+    assert fmt.parse_duration("3:66") is None       # minutes > 59 returns None

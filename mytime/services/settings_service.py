@@ -18,11 +18,11 @@ def update_settings(
     session: Session,
     default_hourly_rate: Decimal,
     currency_symbol: str,
-    invoice_prefix: str = "INV-",
+    default_gst_rate: Decimal | None = None,
 ) -> Settings:
     s = get_settings(session)
     s.default_hourly_rate = Decimal(default_hourly_rate)
     s.currency_symbol = currency_symbol
-    s.invoice_prefix = invoice_prefix
+    s.default_gst_rate = default_gst_rate
     session.commit()
     return s

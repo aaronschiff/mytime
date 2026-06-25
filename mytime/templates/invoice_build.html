@@ -12,7 +12,7 @@
   <input type="hidden" name="cutoff" value="{{ cutoff }}">
   <p>
     <label>Invoice number (optional)<br>
-      <input type="text" name="invoice_number" value="{{ invoice_number_prefix }}" style="width:12em">
+      <input type="text" name="invoice_number" value="{{ next_invoice_number }}" style="width:8em">
     </label>
   </p>
   <table>
@@ -41,13 +41,19 @@
       </tr>
     </tfoot>
   </table>
+  {% if project.gst_enabled and project.gst_rate %}
+  <div id="gst-summary" class="muted" style="margin-top:.5rem">
+    <p>GST ({{ project.gst_rate }}%): <span id="gst-amount">—</span></p>
+    <p><strong>Total incl. GST: <span id="total-incl-gst">—</span></strong></p>
+  </div>
+  {% endif %}
   <p class="muted">Rate {{ project.hourly_rate | money(currency) }}/h.
     Previously invoiced: {{ already_invoiced | money(currency) }}.
     {% if budget_remaining is not none %}Budget remaining: {{ budget_remaining | money(currency) }}.{% endif %}
     Leftover tracked time is written off.
   </p>
-  <button type="submit" onclick="return confirm('Create invoice and lock these entries?')">Create invoice</button>
-  <a href="/projects/{{ project.id }}">Cancel</a>
+  <button type="submit" class="btn-save" onclick="return confirm('Create invoice and lock these entries?')">Create invoice</button>
+  <button type="button" class="btn-cancel" onclick='location.href={{ ("/projects/" ~ project.id) | tojson }}'>Cancel</button>
 </form>
 {% else %}
 <p class="muted">No uninvoiced time up to this date. <a href="/projects/{{ project.id }}">Back</a></p>
@@ -56,9 +62,9 @@
 {% block scripts %}
 <script>
 (function() {
-  // parse hh:mm to decimal hours
   function parseHM(s) {
     s = (s || '').trim();
+    if (/^\d+$/.test(s)) return parseInt(s);
     var parts = s.split(':');
     if (parts.length < 2) return 0;
     var h = parseInt(parts[0]) || 0;
@@ -70,11 +76,12 @@
   }
   function fmtHM(totalMins) {
     var h = Math.floor(totalMins / 60);
-    var m = totalMins % 60;
-    return (h < 10 ? '0' : '') + h + ':' + (m < 10 ? '0' : '') + m;
+    var m = Math.round(totalMins % 60);
+    return String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0');
   }
 
   var currency = {{ currency | tojson }};
+  var gstRate = {{ (project.gst_rate | float) | tojson if project.gst_rate is not none else 'null' }};
 
   function recalc() {
     var inputs = document.querySelectorAll('.inv-dur');
@@ -94,6 +101,13 @@
     if (totAmtEl) totAmtEl.textContent = fmtMoney(totalAmount, currency);
     var totHmEl = document.getElementById('total-inv-hm');
     if (totHmEl) totHmEl.textContent = fmtHM(totalMins);
+    if (gstRate) {
+      var gstAmount = totalAmount * gstRate / 100;
+      var gstEl = document.getElementById('gst-amount');
+      var totalGstEl = document.getElementById('total-incl-gst');
+      if (gstEl) gstEl.textContent = fmtMoney(gstAmount, currency);
+      if (totalGstEl) totalGstEl.textContent = fmtMoney(totalAmount + gstAmount, currency);
+    }
   }
 
   document.querySelectorAll('.inv-dur').forEach(function(inp) {

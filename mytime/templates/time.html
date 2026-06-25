@@ -23,16 +23,18 @@
       <td>{{ names[e.project_id] }}</td>
       <td>{{ task_names[e.task_type_id] }}</td>
       <td>{{ e.seconds | hm }}</td>
-      <td>{{ e.notes or "" }}</td>
+      <td>{{ (e.notes or "")[:50] }}{{ "…" if e.notes and e.notes|length > 50 }}</td>
       <td>
         {% if e.invoice_id %}<span class="muted">invoiced</span>
-        {% else %}
+        {% elif project_statuses.get(e.project_id) == 'active' %}
           <form method="get" action="/time/{{ e.id }}/edit" style="display:inline">
             <input type="hidden" name="from_page" value="/time">
             <button>Edit</button>
           </form>
           <form method="post" action="/time/{{ e.id }}/delete" style="display:inline"
                 onsubmit="return confirm('Delete this entry?')"><button>Delete</button></form>
+        {% else %}
+          <span class="muted">archived</span>
         {% endif %}
       </td>
     </tr>

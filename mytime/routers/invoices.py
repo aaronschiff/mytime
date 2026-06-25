@@ -20,6 +20,19 @@ def _currency(session):
     return settings_service.get_settings(session).currency_symbol
 
 
+def _next_invoice_number(session) -> str:
+    existing = list(session.scalars(
+        select(Invoice.invoice_number).where(Invoice.invoice_number.is_not(None))
+    ))
+    max_num = 0
+    for n in existing:
+        try:
+            max_num = max(max_num, int(n))
+        except (ValueError, TypeError):
+            pass
+    return str(max_num + 1)
+
+
 @router.get("/invoices", response_class=HTMLResponse)
 def invoice_list(request: Request, session: Session = Depends(get_session)):
     all_invoices = list(session.scalars(
@@ -34,17 +47,15 @@ def invoice_list(request: Request, session: Session = Depends(get_session)):
 
 
 @router.get("/projects/{project_id}/invoices/new", response_class=HTMLResponse)
-def build_page(project_id: int, request: Request, cutoff: str = "", session: Session = Depends(get_session)):
-    cutoff_date = date.fromisoformat(cutoff) if cutoff else today()
+def build_page(project_id: int, request: Request, cutoff: str = "",
+               session: Session = Depends(get_session)):
     project = projects.get_project(session, project_id)
+    if project.status == "archived":
+        return RedirectResponse(f"/projects/{project_id}", status_code=303)
+    cutoff_date = date.fromisoformat(cutoff) if cutoff else today()
     rows = invoicing.build_invoice_preview(session, project_id, cutoff_date)
     total_tracked = sum(r.tracked_seconds for r in rows)
     summary = budget.project_summary(session, project)
-    settings = settings_service.get_settings(session)
-    # Check uniqueness hint - get existing invoice numbers
-    existing_numbers = list(session.scalars(
-        select(Invoice.invoice_number).where(Invoice.invoice_number.is_not(None))
-    ))
     return templates.TemplateResponse(request, "invoice_build.html", {
         "project": project,
         "rows": rows,
@@ -53,35 +64,31 @@ def build_page(project_id: int, request: Request, cutoff: str = "", session: Ses
         "total_tracked_seconds": total_tracked,
         "already_invoiced": summary.invoiced_value,
         "budget_remaining": summary.budget_remaining,
-        "invoice_number_prefix": settings.invoice_prefix or "",
-        "existing_numbers": existing_numbers,
+        "next_invoice_number": _next_invoice_number(session),
     })
 
 
 @router.post("/projects/{project_id}/invoices/new")
 async def create(project_id: int, request: Request, session: Session = Depends(get_session)):
+    project = projects.get_project(session, project_id)
+    if project.status == "archived":
+        return RedirectResponse(f"/projects/{project_id}", status_code=303)
     form = await request.form()
     cutoff_date = date.fromisoformat(form["cutoff"])
     invoice_number = (form.get("invoice_number") or "").strip() or None
     task_ids = [int(v) for v in form.getlist("task_id")]
     seconds_by_task = {
-        tid: parse_duration(str(form.get(f"duration_{tid}", "00:00")))
+        tid: parse_duration(str(form.get(f"duration_{tid}", "00:00"))) or 0
         for tid in task_ids
     }
-    # Check uniqueness of invoice_number
     if invoice_number:
         existing = session.scalars(
             select(Invoice).where(Invoice.invoice_number == invoice_number)
         ).first()
         if existing:
-            project = projects.get_project(session, project_id)
             rows = invoicing.build_invoice_preview(session, project_id, cutoff_date)
             total_tracked = sum(r.tracked_seconds for r in rows)
             summary = budget.project_summary(session, project)
-            settings = settings_service.get_settings(session)
-            existing_numbers = list(session.scalars(
-                select(Invoice.invoice_number).where(Invoice.invoice_number.is_not(None))
-            ))
             return templates.TemplateResponse(request, "invoice_build.html", {
                 "project": project,
                 "rows": rows,
@@ -90,22 +97,22 @@ async def create(project_id: int, request: Request, session: Session = Depends(g
                 "total_tracked_seconds": total_tracked,
                 "already_invoiced": summary.invoiced_value,
                 "budget_remaining": summary.budget_remaining,
-                "invoice_number_prefix": invoice_number,
-                "existing_numbers": existing_numbers,
+                "next_invoice_number": invoice_number,
                 "error": f"Invoice number '{invoice_number}' already exists. Please use a different number.",
             }, status_code=400)
-    invoice = invoicing.create_invoice(
+    inv = invoicing.create_invoice(
         session, project_id, cutoff_date, seconds_by_task, now(), invoice_number=invoice_number
     )
-    return RedirectResponse(f"/invoices/{invoice.id}", status_code=303)
+    return RedirectResponse(f"/invoices/{inv.id}", status_code=303)
 
 
 @router.get("/invoices/{invoice_id}", response_class=HTMLResponse)
 def view(invoice_id: int, request: Request, session: Session = Depends(get_session)):
     invoice = invoicing.get_invoice(session, invoice_id)
+    project = projects.get_project(session, invoice.project_id)
     return templates.TemplateResponse(request, "invoice_view.html", {
         "invoice": invoice,
-        "project": projects.get_project(session, invoice.project_id),
+        "project": project,
         "lines": invoicing.invoice_lines(session, invoice_id),
         "task_names": {t.id: t.name for t in task_types.list_task_types(session, include_inactive=True)},
         "currency": _currency(session),
@@ -115,7 +122,9 @@ def view(invoice_id: int, request: Request, session: Session = Depends(get_sessi
 @router.post("/invoices/{invoice_id}/void")
 def void(invoice_id: int, session: Session = Depends(get_session)):
     invoice = invoicing.get_invoice(session, invoice_id)
+    project = projects.get_project(session, invoice.project_id)
+    if project.status == "archived":
+        return RedirectResponse(f"/invoices/{invoice_id}", status_code=303)
     pid = invoice.project_id
     invoicing.void_invoice(session, invoice_id)
     return RedirectResponse(f"/projects/{pid}", status_code=303)
-

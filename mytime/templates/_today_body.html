@@ -1,4 +1,4 @@
-<p>Total today: <strong data-total-seconds="{{ total_seconds }}">{{ total_seconds | hms }}</strong></p>
+<p>Total today: <strong data-total-seconds="{{ total_seconds }}">{{ total_seconds | hm }}</strong></p>
 <table>
   <tbody>
   {% for row in rows %}
@@ -7,7 +7,7 @@
       <td>
         {% if row.running %}
           <span class="elapsed" data-running="1"
-                data-base="{{ row.base }}" data-since="{{ row.since_iso }}">{{ row.elapsed | hms }}</span>
+                data-base="{{ row.base }}" data-since="{{ row.since_iso }}">{{ row.elapsed | hm }}</span>
         {% else %}
           <span class="elapsed elapsed-display" data-running="0" data-base="{{ row.base }}"
                 data-entry-id="{{ row.entry.id }}"
@@ -26,14 +26,14 @@
         {% elif row.running %}
           <form method="post" action="/today/{{ row.entry.id }}/stop" hx-post="/today/{{ row.entry.id }}/stop"
                 hx-target="#timers" hx-swap="innerHTML" style="display:inline"><button>Stop</button></form>
-          <form method="get" action="/time/{{ row.entry.id }}/edit?from=/today" style="display:inline"><button>Edit</button></form>
+          <form method="get" action="/time/{{ row.entry.id }}/edit?from_page=/today" style="display:inline"><button>Edit</button></form>
           <form method="post" action="/today/{{ row.entry.id }}/delete" hx-post="/today/{{ row.entry.id }}/delete"
                 hx-target="#timers" hx-swap="innerHTML" style="display:inline"
                 hx-confirm="Delete this timer?"><button>Delete</button></form>
         {% else %}
           <form method="post" action="/today/{{ row.entry.id }}/start" hx-post="/today/{{ row.entry.id }}/start"
                 hx-target="#timers" hx-swap="innerHTML" style="display:inline"><button>Start</button></form>
-          <form method="get" action="/time/{{ row.entry.id }}/edit?from=/today" style="display:inline"><button>Edit</button></form>
+          <form method="get" action="/time/{{ row.entry.id }}/edit?from_page=/today" style="display:inline"><button>Edit</button></form>
           <form method="post" action="/today/{{ row.entry.id }}/delete" hx-post="/today/{{ row.entry.id }}/delete"
                 hx-target="#timers" hx-swap="innerHTML" style="display:inline"
                 hx-confirm="Delete this timer?"><button>Delete</button></form>

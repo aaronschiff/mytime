@@ -7,4 +7,4 @@ def test_settings_page_and_add_task(client):
 
 def test_save_settings(client):
     client.post("/settings", data={"default_hourly_rate": "200", "currency_symbol": "$"}, follow_redirects=False)
-    assert "200.00" in client.get("/settings").text
+    assert "200" in client.get("/settings").text

@@ -24,8 +24,8 @@ def _context(session: Session) -> dict:
         rows.append({
             "entry": e,
             "running": e.running_since is not None,
-            "elapsed": elapsed,                 # live value at render, for first paint
-            "base": e.seconds,                  # stored accumulated seconds (no running delta)
+            "elapsed": elapsed,
+            "base": e.seconds,
             "since_iso": e.running_since.isoformat() + "Z" if e.running_since else "",
         })
     return {
@@ -55,7 +55,7 @@ def add(
         timers.add_timer(session, project_id, task_type_id, notes, now())
     else:
         seconds = parse_duration(duration)
-        te.create_entry(session, project_id, task_type_id, today(), seconds, notes)
+        te.create_entry(session, project_id, task_type_id, today(), seconds or 0, notes)
     return RedirectResponse("/today", status_code=303)
 
 
@@ -75,8 +75,9 @@ def stop(entry_id: int, request: Request, session: Session = Depends(get_session
 def set_time(entry_id: int, request: Request, time_hm: str = Form(...),
              session: Session = Depends(get_session)):
     entry = te.get_entry(session, entry_id)
-    if entry and entry.running_since is None and entry.invoice_id is None:
-        entry.seconds = parse_duration(time_hm)
+    seconds = parse_duration(time_hm)
+    if entry and entry.running_since is None and entry.invoice_id is None and seconds is not None:
+        entry.seconds = seconds
         session.commit()
     return _body(request, session)
 

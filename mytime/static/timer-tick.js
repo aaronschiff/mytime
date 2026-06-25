@@ -23,8 +23,8 @@ function tick() {
 }
 
 function fmtHms(s) {
-  const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), x = s % 60;
-  return h + ":" + String(m).padStart(2, "0") + ":" + String(x).padStart(2, "0");
+  const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60);
+  return String(h).padStart(2, "0") + ":" + String(m).padStart(2, "0");
 }
 
 function _checkNotification(sinceIso, now) {

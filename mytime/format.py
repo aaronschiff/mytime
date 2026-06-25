@@ -23,20 +23,29 @@ def parse_hm(hours: int, minutes: int) -> int:
     return int(hours) * 3600 + int(minutes) * 60
 
 
-def parse_duration(hm: str) -> int:
-    """Parse 'hh:mm' or 'h:mm' text input into seconds. Returns 0 for invalid input."""
+def parse_duration(hm: str) -> int | None:
+    """Parse 'hh:mm', plain hours (e.g. '2'), or empty string into seconds.
+    Returns None for invalid input (non-numeric, negative, or minutes > 59)."""
     hm = (hm or "").strip()
-    if ":" not in hm:
+    if not hm:
         return 0
+    if ":" not in hm:
+        try:
+            h = int(hm)
+            if h < 0:
+                return None
+            return h * 3600
+        except ValueError:
+            return None
     parts = hm.split(":", 1)
     try:
         h = int(parts[0])
         m = int(parts[1])
         if h < 0 or m < 0 or m > 59:
-            return 0
+            return None
         return h * 3600 + m * 60
     except (ValueError, IndexError):
-        return 0
+        return None
 
 
 def money(amount, symbol: str = "$") -> str:

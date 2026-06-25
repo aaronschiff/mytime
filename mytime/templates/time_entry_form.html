@@ -2,12 +2,16 @@
 {% block title %}{{ "Edit" if entry else "New" }} entry — mytime{% endblock %}
 {% block content %}
 <h1>{{ "Edit" if entry else "New" }} time entry</h1>
+{% if error %}<p style="color:#dc2626"><strong>{{ error }}</strong></p>{% endif %}
 <form method="post" action="{{ '/time/%d/edit' % entry.id if entry else '/time/new' }}" id="entry-form">
   {% if from_page %}<input type="hidden" name="from_page" value="{{ from_page }}">{% endif %}
   <p><label>Project<br>
     <select name="project_id" required style="width:100%">
       {% for p in all_projects %}
-        <option value="{{ p.id }}" {{ "selected" if entry and entry.project_id == p.id }}>{{ p.client_name }} — {{ p.name }}</option>
+        <option value="{{ p.id }}"
+          {% if entry and entry.project_id == p.id %}selected
+          {% elif not entry and preset_project_id and preset_project_id == p.id %}selected
+          {% endif %}>{{ p.client_name }} — {{ p.name }}</option>
       {% endfor %}
     </select></label></p>
   <p><label>Task<br>
@@ -18,23 +22,38 @@
     </select></label></p>
   <p><label>Date<br><input type="date" name="entry_date" required id="entry-date"
        value="{{ entry.entry_date if entry else today }}"></label></p>
-  <p><label>Time (hh:mm)<br><input type="text" name="duration"
+  <p><label>Time (hh:mm)<br><input type="text" name="duration" id="entry-duration"
        value="{{ entry.seconds | hm if entry else '00:00' }}" placeholder="hh:mm" size="6" style="width:7em"></label></p>
   <p><label>Notes<br><textarea name="notes" style="width:100%" rows="3">{{ entry.notes if entry and entry.notes else '' }}</textarea></label></p>
-  <button type="submit">Save</button>
-  <a href="{{ from_page or '/time' }}">Cancel</a>
+  <button type="submit" class="btn-save">Save</button>
+  <button type="button" class="btn-cancel" onclick='location.href={{ (from_page or "/time") | tojson }}'>Cancel</button>
 </form>
 {% endblock %}
 {% block scripts %}
 <script>
 (function() {
   var today = {{ today | tojson }};
+
+  function isValidDuration(s) {
+    s = (s || '').trim();
+    if (!s || s === '00:00' || s === '0:00') return true;
+    if (/^\d+$/.test(s)) return parseInt(s) >= 0;
+    var m = s.match(/^(\d+):(\d{1,2})$/);
+    return m ? parseInt(m[2]) <= 59 : false;
+  }
+
   document.getElementById('entry-form').addEventListener('submit', function(e) {
     var d = document.getElementById('entry-date').value;
     if (d && d > today) {
       if (!confirm('This date is in the future. Continue?')) {
         e.preventDefault();
+        return;
       }
+    }
+    var dur = document.getElementById('entry-duration').value;
+    if (!isValidDuration(dur)) {
+      alert('Invalid time format. Use hh:mm (e.g. 2:30) or a whole number of hours (e.g. 2).');
+      e.preventDefault();
     }
   });
 })();

@@ -2,7 +2,7 @@
 
 ## Schema migration needed on bbbee.local
 
-New columns and a new table were added. The `_MIGRATIONS` list in `db.py` handles `ALTER TABLE` for existing columns (`invoice_prefix`, `invoice_number`, `client_id`). The new `client` table will be created automatically by `create_all` on first run. After deploying, the startup `_populate_client_ids()` will backfill `client_id` on all existing projects.
+New GST columns were added in this session. The `_MIGRATIONS` list in `db.py` handles `ALTER TABLE` for all new columns (`settings.default_gst_rate`, `project.gst_enabled`, `project.gst_rate`, `invoice.gst_amount`). These run automatically on startup — just deploy and restart the service.
 
 ## Deferred features for future work
 

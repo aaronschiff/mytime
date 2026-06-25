@@ -22,6 +22,14 @@
 <script src="/static/timer-tick.js" defer></script>
 <script>
 (function() {
+  function isValidDuration(s) {
+    s = (s || '').trim();
+    if (!s || s === '00:00' || s === '0:00') return true;
+    if (/^\d+$/.test(s)) return parseInt(s) >= 0;
+    var m = s.match(/^(\d+):(\d{1,2})$/);
+    return m ? parseInt(m[2]) <= 59 : false;
+  }
+
   var durInput = document.getElementById('new-duration');
   var startInput = document.getElementById('new-start');
   var addBtn = document.getElementById('add-btn');
@@ -38,6 +46,15 @@
   }
   durInput.addEventListener('input', updateBtn);
 
+  document.getElementById('add-form').addEventListener('submit', function(e) {
+    if (parseInt(startInput.value) === 0) {
+      if (!isValidDuration(durInput.value)) {
+        alert('Invalid time format. Use hh:mm (e.g. 2:30) or a whole number of hours (e.g. 2).');
+        e.preventDefault();
+      }
+    }
+  });
+
   // Keyboard shortcuts (only when not in a text/select input)
   document.addEventListener('keydown', function(e) {
     var tag = document.activeElement ? document.activeElement.tagName : '';
@@ -45,7 +62,6 @@
     if (inInput) return;
     if (e.key === 's' || e.key === 'S') {
       e.preventDefault();
-      // Stop running timer if any, otherwise start the first stopped timer
       var stopForm = document.querySelector('#timers form[action*="/stop"]');
       if (stopForm) {
         if (window.htmx) htmx.trigger(stopForm, 'submit'); else stopForm.requestSubmit();
@@ -77,12 +93,16 @@
     }
   });
 
-  // Submit elapsed edit on Enter or blur
+  // Submit elapsed edit on Enter; validate on submit
   document.addEventListener('keydown', function(e) {
     if (e.key === 'Enter') {
       var inp = e.target.closest('.elapsed-edit-form input[name="time_hm"]');
       if (inp) {
         e.preventDefault();
+        if (!isValidDuration(inp.value)) {
+          alert('Invalid time format. Use hh:mm (e.g. 2:30) or a whole number of hours (e.g. 2).');
+          return;
+        }
         inp.closest('form').requestSubmit ? inp.closest('form').requestSubmit() : inp.closest('form').submit();
       }
     }
@@ -90,7 +110,6 @@
   document.addEventListener('blur', function(e) {
     var inp = e.target;
     if (inp.name === 'time_hm' && inp.closest('.elapsed-edit-form')) {
-      // Submit on blur via htmx if htmx is present, else native submit
       var form = inp.closest('form');
       if (window.htmx) {
         htmx.trigger(form, 'submit');

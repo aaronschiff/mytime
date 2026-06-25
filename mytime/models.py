@@ -28,6 +28,7 @@ class Settings(Base):
     default_hourly_rate: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=Decimal("0"))
     currency_symbol: Mapped[str] = mapped_column(String(8), default="$")
     invoice_prefix: Mapped[str] = mapped_column(String(20), default="INV-")
+    default_gst_rate: Mapped[Decimal | None] = mapped_column(Numeric(5, 2), nullable=True)
 
 
 class TaskType(Base):
@@ -49,6 +50,8 @@ class Project(Base):
     status: Mapped[str] = mapped_column(String(20), default="active")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=clock.now)
     client_id: Mapped[int | None] = mapped_column(ForeignKey("client.id"), nullable=True)
+    gst_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
+    gst_rate: Mapped[Decimal | None] = mapped_column(Numeric(5, 2), nullable=True)
 
 
 class TimeEntry(Base):
@@ -74,6 +77,7 @@ class Invoice(Base):
     rate_snapshot: Mapped[Decimal] = mapped_column(Numeric(10, 2))
     total_amount: Mapped[Decimal] = mapped_column(Numeric(12, 2))
     invoice_number: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    gst_amount: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
 
 
 class InvoiceLine(Base):
