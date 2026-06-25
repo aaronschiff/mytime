@@ -9,8 +9,9 @@ A single-user web app for a solo consulting business to track time and manage
 billing. Runs on a Debian server on the local network only — **not externally
 accessible**. No authentication or user management at this stage.
 
-Three core functions: **Projects**, **Time tracking**, **Invoicing**, plus a
-**Project overview** landing page. Typical load: 3–6 active projects at a time.
+Core functions: **Daily timer window**, **Projects**, **Time tracking**,
+**Invoicing**, plus a **Project overview** landing page. Typical load: 3–6 active
+projects at a time.
 
 The app does **not** generate invoice documents. It tracks which time has been
 invoiced and tells the user how much time to invoice, broken down by task type.
@@ -19,7 +20,8 @@ invoiced and tells the user how much time to invoice, broken down by task type.
 
 - **Backend:** FastAPI (Python), server-rendered HTML via Jinja2 templates.
 - **Interactivity:** HTMX for in-place edits, modal/inline forms, and the live
-  invoice builder — minimal hand-written JavaScript.
+  invoice builder. A small client-side script drives the per-second ticking of a
+  running timer; the server stays the source of truth.
 - **Storage:** SQLite via SQLAlchemy.
 - **Serving:** single Uvicorn process, deployed as a **systemd service** on the
   Debian box, bound to the LAN. No auth.
@@ -34,28 +36,31 @@ mytime/
   db.py              # engine + session
   models.py          # SQLAlchemy tables
   routers/
+    today.py         # daily timer window
     overview.py
     projects.py
     time_entries.py
     invoices.py
     settings.py
   services/          # pure, testable logic (no web plumbing)
+    timers.py        # start/stop, single-running enforcement, live elapsed
     budget.py        # invoiced/uninvoiced value, remaining/exceedance
     invoicing.py     # group uninvoiced by task, apply adjustments, lock
-    guards.py        # delete-project / void-invoice rules
+    guards.py        # delete-project / void-invoice / locked-entry rules
   templates/         # Jinja2 + HTMX partials
-  static/            # CSS + htmx lib
+  static/            # CSS, htmx lib, timer-tick.js
   tests/
 ```
 
-The genuinely tricky logic (invoicing rules, budget math, integrity guards)
-lives in `services/` as pure functions, isolated from the web layer so it can be
-unit-tested directly.
+The genuinely tricky logic (timer state, invoicing rules, budget math, integrity
+guards) lives in `services/` as pure functions, isolated from the web layer so it
+can be unit-tested directly.
 
 ## 3. Data model
 
-Durations are stored as **integer minutes** throughout (hours & minutes are only
-an input/display format). Money is decimal dollars.
+Durations are stored as **integer seconds** throughout (stopwatches need
+sub-minute precision; this avoids losing a few seconds on every stop). Hours &
+minutes are only an input/display format. Money is decimal dollars.
 
 ### `settings` (single row)
 - `default_hourly_rate` — pre-fills new projects' rate
@@ -77,10 +82,17 @@ an input/display format). Money is decimal dollars.
 - `created_at`
 
 ### `time_entry`
+A time entry is also a **timer** — the daily timer window manipulates these rows
+directly (see §5).
 - `id`, `project_id`, `task_type_id`
 - `notes` (nullable)
 - `entry_date`
-- `minutes` (int)
+- `seconds` (int) — accumulated time from completed runs
+- `running_since` (nullable timestamp) — set while running; `null` when stopped.
+  **Live elapsed = `seconds` + (now − `running_since`)**; on stop the delta folds
+  into `seconds`.
+- `first_started_at` (nullable timestamp) — order the timer was first started;
+  drives the timer-window sort.
 - `invoice_id` (nullable FK)
 - `created_at`
 - An entry is **invoiced/locked exactly when `invoice_id` is set**. Locked
@@ -95,14 +107,14 @@ an input/display format). Money is decimal dollars.
 
 ### `invoice_line` (one per task type on an invoice)
 - `id`, `invoice_id`, `task_type_id`
-- `tracked_minutes` (sum of included entries for that task type)
-- `invoiced_minutes` (the adjusted figure entered by the user)
-- `amount` (= `invoiced_minutes / 60 × rate_snapshot`)
+- `tracked_seconds` (sum of included entries for that task type)
+- `invoiced_seconds` (the adjusted figure entered by the user)
+- `amount` (= `invoiced_seconds / 3600 × rate_snapshot`)
 
 ### Derived figures
 - **Invoiced value** (project) = Σ `invoice.total_amount`
-- **Uninvoiced value** = (Σ uninvoiced `minutes` / 60) × **current** project rate
-- **Total tracked time** = Σ all `minutes` for the project (invoiced + uninvoiced)
+- **Uninvoiced value** = (Σ uninvoiced `seconds` / 3600) × **current** project rate
+- **Total tracked time** = Σ all `seconds` for the project (invoiced + uninvoiced)
 - **Budget remaining** = `budget − (invoiced value + uninvoiced value)`;
   negative ⇒ exceedance
 
@@ -126,7 +138,7 @@ task type**. Adjustments (rounding, budget caps) are made **per task type**.
    `invoice_id` (locking them).
 
 ### Leftover time
-When invoiced minutes < tracked minutes, the difference is **written off**: all
+When invoiced time < tracked time, the difference is **written off**: all
 included entries are locked regardless, and the lower invoiced figure is simply
 recorded. Leftover time does **not** reappear on future invoices.
 
@@ -135,7 +147,44 @@ Each project lists its past invoices (date, cutoff, total, per-task lines). An
 invoice can be **voided**: this unlocks its entries (clears `invoice_id`) and
 deletes the invoice + lines (with confirmation), allowing correction of mistakes.
 
-## 5. Project overview
+## 5. Daily timer window
+
+The primary daily-use surface, designed to be kept open all day in a small
+window. A **timer is a `time_entry`** (no separate entity) — entries created here
+flow through to the Time page, project detail, and invoicing like any other.
+
+### Behaviour
+- **Add timer:** mini-form (project, task, optional note). Creating it
+  **auto-starts** it immediately — it is dated **today**, `running_since` and
+  `first_started_at` are set to now — and **auto-stops** whichever timer was
+  running (folding that timer's elapsed into its `seconds`).
+- **One running at a time:** enforced server-side; starting (or adding) a timer
+  stops any other running timer.
+- **Start / Stop:** toggling a stopped timer resumes accumulating onto the same
+  entry; stopping folds the live delta into `seconds`.
+- **Sorting:** by `first_started_at` (order first started); not-yet-started
+  timers (e.g. if one is ever created stopped) sort to the bottom by creation.
+- **Edit total / delete:** edit accumulated time (h & m) or delete the timer,
+  subject to the locked-entry guard.
+- **Day scope:** the window shows entries with `entry_date = today`, plus any
+  still-running timer started earlier. A timer left running keeps its original
+  date and keeps counting; no special midnight handling.
+
+### The window (`/today`)
+- Sized to keep open all day in a small browser window.
+- Header: today's date + a big **total tracked today** (includes the live running
+  timer).
+- Compact list of timer rows: *project · task*, elapsed time, **Start/Stop**,
+  edit, delete.
+- **Running state is unmistakable:** highlighted row + pulsing indicator; the
+  elapsed display **ticks every second** via `timer-tick.js` (computed from
+  `running_since`). All start/stop/add/edit/delete go through HTMX with the
+  server as source of truth.
+- The **browser tab title** reflects the running timer's elapsed
+  (e.g. `▶ 0:42:13 — Acme/Analysis`) so it's glanceable when the window is
+  minimized or backgrounded.
+
+## 6. Project overview
 
 The landing page (`/`) shows a card per **active** project:
 
@@ -151,10 +200,11 @@ The landing page (`/`) shows a card per **active** project:
   - Projects **without** a budget show only the invoiced + uninvoiced segments
     with dollar labels (no remaining/exceedance).
 
-## 6. Pages & navigation
+## 7. Pages & navigation
 
-Top nav: **Overview · Projects · Time · Settings**.
+Top nav: **Today · Overview · Projects · Time · Settings**.
 
+- **Today** (`/today`) — the daily timer window (§5).
 - **Overview** (`/`) — project cards (active projects only).
 - **Projects** (`/projects`) — table with an **Active / Archived** filter toggle.
   Row actions: Edit, Archive/Unarchive, Delete (guarded), and link to detail.
@@ -162,16 +212,19 @@ Top nav: **Overview · Projects · Time · Settings**.
     **Time entries** (this project) and **Invoices**; buttons for **New time
     entry** and **New invoice**.
 - **Time** (`/time`) — global time-entry list across all projects, newest first,
-  with filters (project, date range). Add/Edit/Delete. Add-entry form: project,
-  task type, date, hours + minutes, notes. Locked (invoiced) entries shown greyed
-  with no edit/delete.
+  with filters (project, date range). Add/Edit/Delete, including back-dated
+  manual entries. Add-entry form: project, task type, date, hours + minutes,
+  notes. Locked (invoiced) entries shown greyed with no edit/delete.
 - **Settings** (`/settings`) — default hourly rate, currency symbol, and task
   type management (add, rename, retire/reactivate).
 
 Forms and inline actions use HTMX (modal or inline partials) so edits happen
 without full page reloads. Light custom CSS, no front-end framework.
 
-## 7. Actions reference
+## 8. Actions reference
+
+**Timers (daily window):** add (auto-starts), start, stop, edit total, delete.
+- Adding or starting a timer auto-stops any other running timer.
 
 **Projects:** add, edit, archive, unarchive, delete.
 - *Delete* is permitted **only when the project has no invoices** (protects
@@ -184,18 +237,20 @@ without full page reloads. Light custom CSS, no front-end framework.
 **Invoices:** create, view, void.
 - *Void* unlocks included entries and removes the invoice + lines.
 
-## 8. Testing
+## 9. Testing
 
 - **pytest** over the isolated service functions:
+  - timer state (start/stop, single-running enforcement, live-elapsed/fold-on-stop)
   - budget math (invoiced/uninvoiced value, remaining/exceedance, no-budget case)
   - invoice building (grouping by task, adjustment, rate snapshot, locking)
   - integrity guards (delete-project, void-invoice, locked-entry edit/delete)
 - A few HTTP smoke tests via FastAPI `TestClient` for the main routes.
 
-## 9. Out of scope (this stage)
+## 10. Out of scope (this stage)
 
 - Authentication / user management / multi-user.
 - External accessibility and related security hardening.
 - Invoice document generation (PDF/printing) — done separately by the user.
 - Per-project task lists (global list only).
 - Carrying forward leftover/uninvoiced-over-budget time (written off instead).
+- Midnight rollover handling for a timer left running across days.
