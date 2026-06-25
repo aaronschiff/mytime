@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Projects — mytime{% endblock %}
+{% block content %}
+<h1>Projects</h1>
+<p>
+  <a href="/projects?status=active">Active</a> ·
+  <a href="/projects?status=archived">Archived</a> ·
+  <a href="/projects/new">+ New project</a>
+</p>
+<table>
+  <thead><tr><th>Client</th><th>Project</th><th>Rate</th><th>Status</th><th></th></tr></thead>
+  <tbody>
+  {% for p in projects %}
+    <tr>
+      <td>{{ p.client_name }}</td>
+      <td><a href="/projects/{{ p.id }}">{{ p.name }}</a></td>
+      <td>{{ p.hourly_rate | money(currency) }}</td>
+      <td>{{ p.status }}</td>
+      <td>
+        <a href="/projects/{{ p.id }}/edit">Edit</a>
+        {% if p.status == "active" %}
+          <form method="post" action="/projects/{{ p.id }}/status" style="display:inline">
+            <input type="hidden" name="status" value="archived"><button>Archive</button>
+          </form>
+        {% else %}
+          <form method="post" action="/projects/{{ p.id }}/status" style="display:inline">
+            <input type="hidden" name="status" value="active"><button>Unarchive</button>
+          </form>
+        {% endif %}
+        <form method="post" action="/projects/{{ p.id }}/delete" style="display:inline"
+              onsubmit="return confirm('Delete this project and its time entries?')">
+          <button>Delete</button>
+        </form>
+      </td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

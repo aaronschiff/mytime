@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}{{ "Edit" if project else "New" }} project — mytime{% endblock %}
+{% block content %}
+<h1>{{ "Edit" if project else "New" }} project</h1>
+{% if error %}<p class="muted">{{ error }}</p>{% endif %}
+<form method="post" action="{{ '/projects/%d/edit' % project.id if project else '/projects/new' }}">
+  <p><label>Client name<br><input name="client_name" required value="{{ project.client_name if project else '' }}"></label></p>
+  <p><label>Project name<br><input name="name" required value="{{ project.name if project else '' }}"></label></p>
+  <p><label>Hourly rate<br><input type="number" step="0.01" name="hourly_rate"
+       value="{{ '%.2f'|format(project.hourly_rate) if project else '%.2f'|format(default_rate) }}"></label></p>
+  <p><label>Budget (optional)<br><input type="number" step="0.01" name="budget"
+       value="{{ '%.2f'|format(project.budget) if project and project.budget is not none else '' }}"></label></p>
+  <p><label>Description (optional)<br><textarea name="description">{{ project.description if project and project.description else '' }}</textarea></label></p>
+  <button type="submit">Save</button> <a href="/projects">Cancel</a>
+</form>
+{% endblock %}

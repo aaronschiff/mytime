@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}{{ project.name }} — mytime{% endblock %}
+{% block content %}
+<h1>{{ project.client_name }} — {{ project.name }}</h1>
+<p class="muted">Rate {{ project.hourly_rate | money(currency) }}
+  {% if project.budget is not none %}· Budget {{ project.budget | money(currency) }}{% endif %}
+  · {{ project.status }}</p>
+{% if project.description %}<p>{{ project.description }}</p>{% endif %}
+<p><a href="/projects/{{ project.id }}/edit">Edit project</a></p>
+
+<section id="detail-body">{% include "_project_detail_body.html" %}</section>
+{% endblock %}
