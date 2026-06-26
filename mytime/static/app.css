@@ -34,3 +34,5 @@ button.btn-save:hover { background:#1d4ed8; border-color:#1d4ed8; }
 button.btn-cancel { background:#fff; color:#475569; border:1px solid var(--line); }
 button.btn-cancel:hover { background:#f1f5f9; }
 .swatch-over { background:#dc2626; }
+#error-toast { position:fixed; bottom:1.5rem; left:50%; transform:translateX(-50%) translateY(calc(100% + 2rem)); transition:transform .2s ease; background:#dc2626; color:#fff; padding:.6rem 1.2rem; border-radius:6px; font-weight:600; z-index:999; white-space:nowrap; box-shadow:0 2px 8px rgba(0,0,0,.25); pointer-events:none; }
+#error-toast.show { transform:translateX(-50%) translateY(0); }
