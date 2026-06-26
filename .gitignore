@@ -6,3 +6,5 @@ mytime.db
 WORKLOG.md
 TESTING*.md
 docs/superpowers/
+deploy/deploy-bbbee.sh
+deploy/bbbee.md
