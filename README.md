@@ -170,10 +170,14 @@ The today view wraps the timer list in `<div id="timers">`. Start/stop/set-time/
 | `seg-inv / seg-unv / seg-rem / seg-over` | Budget bar segments (blue/light-blue/grey/red) |
 | `swatch-inv/unv/rem/over` | Matching 10px legend squares |
 | `card` | White bordered rounded container |
+| `nowrap` | Prevents cell text from wrapping (used on date and client-name cells) |
+| `tabnum` | Tabular figures (`font-variant-numeric: tabular-nums`) for dates, times, money in prose |
+| `num` | Tabular figures + `text-align: right` for money columns in tables |
+| `current` (on `button`) | Dark filled state for active filter buttons (e.g. Active/Archived) |
 
 ## Features
 
-- **Today page:** Live timer with start/stop; two-mode add (auto-start or save with time); click-to-edit elapsed time (HH:MM); keyboard shortcuts: `s` stop/start, `n` focus new-entry form; shortcut reminder displayed; timer list shows project name only (no client prefix)
+- **Today page:** Live timer with start/stop; two-mode add (auto-start or save with time); click-to-edit elapsed time (HH:MM); keyboard shortcuts: `s` stop/start, `n` focus new-entry form. Layout: "Total today" below h1, "Create timer" card with form, "Today's time entries" table, shortcuts hint at bottom.
 - **Projects:** CRUD with budget tracking; archive/unarchive; guarded delete; GST toggle per project; client+project name uniqueness enforced; archived projects: Edit hidden, Unarchive shown; blocked from new time entries and invoices; projects list sorted reverse-chronological with date-started column
 - **Time entries:** Log manual entries (hh:mm or plain hours); edit/delete guarded by invoice lock and project archived status; future-date confirmation; ≥10h entry confirmation; notes truncated to 3 words in all list views
 - **Invoicing:** Build per project, group by task type, live dollar amounts with cents; GST rows in table footer when enabled; auto-suggested numeric invoice numbers; void blocked for archived projects; invoice list in project detail shows cents

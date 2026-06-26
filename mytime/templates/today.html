@@ -2,22 +2,27 @@
 {% block title %}Today — mytime{% endblock %}
 {% block content %}
 <h1>Today <span class="muted">{{ day | date }}</span></h1>
-<form method="post" action="/today/add" id="add-form">
-  <select name="project_id" required>
-    <option value="" disabled selected>Project…</option>
-    {% for p in all_projects %}<option value="{{ p.id }}">{{ p.client_name }} — {{ p.name }}</option>{% endfor %}
-  </select>
-  <select name="task_type_id" required>
-    <option value="" disabled selected>Task…</option>
-    {% for t in task_types %}<option value="{{ t.id }}">{{ t.name }}</option>{% endfor %}
-  </select>
-  <input type="text" name="notes" placeholder="Notes (optional)">
-  <input type="text" name="duration" id="new-duration" value="00:00" size="5" style="width:5em" placeholder="hh:mm">
-  <input type="hidden" name="start" id="new-start" value="1">
-  <button type="submit" id="add-btn">Add &amp; start</button>
-</form>
-<p class="muted" style="font-size:.85rem;margin:.25rem 0">Shortcuts: <kbd>s</kbd> stop/start running timer · <kbd>n</kbd> focus new entry form</p>
+<p>Total today: <strong data-total-seconds="{{ total_seconds }}">{{ total_seconds | hm }}</strong></p>
+<div class="card">
+  <h2 style="margin:0 0 .75rem">Create timer</h2>
+  <form method="post" action="/today/add" id="add-form">
+    <select name="project_id" required>
+      <option value="" disabled selected>Project…</option>
+      {% for p in all_projects %}<option value="{{ p.id }}">{{ p.client_name }} — {{ p.name }}</option>{% endfor %}
+    </select>
+    <select name="task_type_id" required>
+      <option value="" disabled selected>Task…</option>
+      {% for t in task_types %}<option value="{{ t.id }}">{{ t.name }}</option>{% endfor %}
+    </select>
+    <input type="text" name="notes" placeholder="Notes (optional)">
+    <input type="text" name="duration" id="new-duration" value="00:00" size="5" style="width:5em" placeholder="hh:mm">
+    <input type="hidden" name="start" id="new-start" value="1">
+    <button type="submit" id="add-btn">Add &amp; start</button>
+  </form>
+</div>
+<h2 style="margin:2rem 0 .5rem">Today's time entries:</h2>
 <div id="timers">{% include "_today_body.html" %}</div>
+<p class="muted" style="font-size:.85rem;margin:2rem 0 .25rem">Shortcuts: <kbd>s</kbd> stop/start running timer · <kbd>n</kbd> focus new entry form</p>
 {% endblock %}
 {% block scripts %}
 <script src="/static/timer-tick.js" defer></script>

@@ -25,11 +25,11 @@
   {% endif %}
 </div>
 <p class="muted">
-  <span class="swatch swatch-inv"></span>Invoiced {{ s.invoiced_value | money(currency) }} ·
-  <span class="swatch swatch-unv"></span>Uninvoiced {{ s.uninvoiced_value | money(currency) }} ·
+  <span class="swatch swatch-inv"></span>Invoiced <span class="tabnum">{{ s.invoiced_value | money(currency) }}</span> ·
+  <span class="swatch swatch-unv"></span>Uninvoiced <span class="tabnum">{{ s.uninvoiced_value | money(currency) }}</span> ·
   {% if s.project.budget is none %}no budget
-  {% elif s.over_budget %}<span class="swatch swatch-over"></span><strong class="over-budget">over budget by {{ s.exceedance | money(currency) }}</strong>
-  {% else %}<span class="swatch swatch-rem"></span>remaining {{ s.budget_remaining | money(currency) }}{% if s.project.budget and s.project.budget > 0 %} ({{ ((s.budget_remaining | float) / (s.project.budget | float) * 100) | round | int }}%){% endif %}
+  {% elif s.over_budget %}<span class="swatch swatch-over"></span><strong class="over-budget">over budget by <span class="tabnum">{{ s.exceedance | money(currency) }}</span></strong>
+  {% else %}<span class="swatch swatch-rem"></span>remaining <span class="tabnum">{{ s.budget_remaining | money(currency) }}</span>{% if s.project.budget and s.project.budget > 0 %} (<span class="tabnum">{{ ((s.budget_remaining | float) / (s.project.budget | float) * 100) | round | int }}%</span>){% endif %}
   {% endif %}
-  · tracked {{ s.total_tracked_seconds | hm }}
+  · tracked <span class="tabnum">{{ s.total_tracked_seconds | hm }}</span>
 </p>

@@ -6,19 +6,22 @@
   <form method="get" action="/clients/{{ client.id }}/edit" style="display:inline">
     <button>Edit</button>
   </form>
-  <a href="/projects/new?from_page=/clients/{{ client.id }}">+ New project</a>
+  <form method="get" action="/projects/new" style="display:inline">
+    <input type="hidden" name="from_page" value="/clients/{{ client.id }}">
+    <button>+ New project</button>
+  </form>
 </p>
 <table>
-  <thead><tr><th>Project</th><th style="text-align:right">Budget</th><th style="text-align:right">Invoiced</th><th style="text-align:right">Uninvoiced</th><th>Started</th><th>Status</th><th></th></tr></thead>
+  <thead><tr><th>Project</th><th class="num">Budget</th><th class="num">Invoiced</th><th class="num">Uninvoiced</th><th>Started</th><th>Status</th><th></th></tr></thead>
   <tbody>
   {% for p in projects %}
     {% set s = summaries[p.id] %}
     <tr>
       <td><a href="/projects/{{ p.id }}">{{ p.name }}</a></td>
-      <td style="text-align:right">{{ p.budget | money(currency) if p.budget is not none else "—" }}</td>
-      <td style="text-align:right">{{ s.invoiced_value | money(currency) }}</td>
-      <td style="text-align:right">{{ s.uninvoiced_value | money(currency) }}</td>
-      <td>{{ p.created_at | date }}</td>
+      <td class="num">{{ p.budget | money(currency) if p.budget is not none else "—" }}</td>
+      <td class="num">{{ s.invoiced_value | money(currency) }}</td>
+      <td class="num">{{ s.uninvoiced_value | money(currency) }}</td>
+      <td class="nowrap tabnum">{{ p.created_at | date }}</td>
       <td>{{ p.status }}</td>
       <td>
         <form method="get" action="/projects/{{ p.id }}/edit" style="display:inline">

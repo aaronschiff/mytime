@@ -7,7 +7,7 @@
   · {{ project.status }}</p>
 {% if project.description %}<p>{{ project.description }}</p>{% endif %}
 {% if project.status == 'active' %}
-<p><a href="/projects/{{ project.id }}/edit">Edit project</a></p>
+<p><form method="get" action="/projects/{{ project.id }}/edit" style="display:inline"><button>Edit project</button></form></p>
 {% else %}
 <p>
   <form method="post" action="/projects/{{ project.id }}/status" style="display:inline">
