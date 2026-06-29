@@ -1,20 +1,34 @@
 from datetime import date
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from mytime.models import TimeEntry
 from mytime.services import guards
 
 
-def list_entries(session, project_id=None, date_from=None, date_to=None) -> list[TimeEntry]:
-    stmt = select(TimeEntry)
+def _entry_filter(stmt, project_id=None, date_from=None, date_to=None):
     if project_id is not None:
         stmt = stmt.where(TimeEntry.project_id == project_id)
     if date_from is not None:
         stmt = stmt.where(TimeEntry.entry_date >= date_from)
     if date_to is not None:
         stmt = stmt.where(TimeEntry.entry_date <= date_to)
+    return stmt
+
+
+def count_entries(session, project_id=None, date_from=None, date_to=None) -> int:
+    stmt = select(func.count()).select_from(TimeEntry)
+    stmt = _entry_filter(stmt, project_id, date_from, date_to)
+    return session.scalar(stmt)
+
+
+def list_entries(session, project_id=None, date_from=None, date_to=None,
+                 limit: int | None = None, offset: int = 0) -> list[TimeEntry]:
+    stmt = select(TimeEntry)
+    stmt = _entry_filter(stmt, project_id, date_from, date_to)
     stmt = stmt.order_by(TimeEntry.entry_date.desc(), TimeEntry.id.desc())
+    if limit is not None:
+        stmt = stmt.limit(limit).offset(offset)
     return list(session.scalars(stmt))
 
 

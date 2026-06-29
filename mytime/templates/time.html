@@ -2,8 +2,26 @@
 {% block title %}Time — mytime{% endblock %}
 {% block content %}
 <h1>Time entries</h1>
-<p><form method="get" action="/time/new" style="display:inline"><input type="hidden" name="from_page" value="/time"><button>+ New entry</button></form></p>
+<p>
+  <form method="get" action="/time/new" style="display:inline"><input type="hidden" name="from_page" value="/time"><button>+ New entry</button></form>
+  <form method="get" action="/time" style="display:inline;margin-left:1rem">
+    <input type="hidden" name="project_id" value="{{ filter_project_id or '' }}">
+    <input type="hidden" name="date_filter" value="7d">
+    <button {% if date_filter == "7d" %}class="current"{% endif %}>Last 7 days</button>
+  </form>
+  <form method="get" action="/time" style="display:inline">
+    <input type="hidden" name="project_id" value="{{ filter_project_id or '' }}">
+    <input type="hidden" name="date_filter" value="30d">
+    <button {% if date_filter == "30d" %}class="current"{% endif %}>Last 30 days</button>
+  </form>
+  <form method="get" action="/time" style="display:inline">
+    <input type="hidden" name="project_id" value="{{ filter_project_id or '' }}">
+    <input type="hidden" name="date_filter" value="all">
+    <button {% if date_filter == "all" %}class="current"{% endif %}>All</button>
+  </form>
+</p>
 <form method="get" action="/time" class="muted">
+  <input type="hidden" name="date_filter" value="{{ date_filter }}">
   <label>Project
     <select name="project_id">
       <option value="">All</option>
@@ -14,31 +32,7 @@
   </label>
   <button>Filter</button>
 </form>
-<table>
-  <thead><tr><th>Date</th><th>Project</th><th>Task</th><th>Time</th><th>Notes</th><th></th></tr></thead>
-  <tbody>
-  {% for e in entries %}
-    <tr class="{{ 'locked' if e.invoice_id }}">
-      <td class="nowrap tabnum">{{ e.entry_date | date }}</td>
-      <td>{{ names[e.project_id] }}</td>
-      <td>{{ task_names[e.task_type_id] }}</td>
-      <td class="tabnum">{{ e.seconds | hm }}</td>
-      <td>{{ (e.notes or "") | truncate_words }}</td>
-      <td>
-        {% if e.invoice_id %}<span class="muted">invoiced</span>
-        {% elif project_statuses.get(e.project_id) == 'active' %}
-          <form method="get" action="/time/{{ e.id }}/edit" style="display:inline">
-            <input type="hidden" name="from_page" value="/time">
-            <button>Edit</button>
-          </form>
-          <form method="post" action="/time/{{ e.id }}/delete" style="display:inline"
-                onsubmit="return confirm('Delete this entry?')"><button>Delete</button></form>
-        {% else %}
-          <span class="muted">archived</span>
-        {% endif %}
-      </td>
-    </tr>
-  {% endfor %}
-  </tbody>
-</table>
+<div id="time-table">
+  {% include "_time_entries_table.html" %}
+</div>
 {% endblock %}

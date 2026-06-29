@@ -1,4 +1,5 @@
-from datetime import date
+import math
+from datetime import date, timedelta
 
 from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
@@ -14,6 +15,7 @@ from mytime.templating import templates
 router = APIRouter()
 
 _DURATION_ERROR = "Invalid time format. Use hh:mm (e.g. 2:30) or a whole number of hours (e.g. 2)."
+_PAGE_SIZE = 30
 
 
 def _lookup(session):
@@ -22,17 +24,51 @@ def _lookup(session):
     return ps, ts, {p.id: f"{p.client_name} — {p.name}" for p in ps}, {t.id: t.name for t in ts}
 
 
-@router.get("/time", response_class=HTMLResponse)
-def time_page(request: Request, project_id: str = "", session: Session = Depends(get_session)):
-    pid = int(project_id) if project_id else None
+def _date_range(date_filter: str, ref_date):
+    if date_filter == "7d":
+        return ref_date - timedelta(days=6), None
+    if date_filter == "30d":
+        return ref_date - timedelta(days=29), None
+    return None, None  # "all"
+
+
+def _time_context(session, project_id_str: str, date_filter: str, page: int):
+    pid = int(project_id_str) if project_id_str else None
     ps, ts, names, task_names = _lookup(session)
     project_statuses = {p.id: p.status for p in ps}
-    return templates.TemplateResponse(request, "time.html", {
-        "entries": te.list_entries(session, project_id=pid),
-        "all_projects": ps, "names": names, "task_names": task_names,
+    date_from, date_to = _date_range(date_filter, today())
+    total = te.count_entries(session, project_id=pid, date_from=date_from, date_to=date_to)
+    total_pages = max(1, math.ceil(total / _PAGE_SIZE))
+    page = max(1, min(page, total_pages))
+    entries = te.list_entries(
+        session, project_id=pid, date_from=date_from, date_to=date_to,
+        limit=_PAGE_SIZE, offset=(page - 1) * _PAGE_SIZE,
+    )
+    return {
+        "entries": entries,
+        "all_projects": ps,
+        "names": names,
+        "task_names": task_names,
         "filter_project_id": pid,
         "project_statuses": project_statuses,
-    })
+        "date_filter": date_filter,
+        "page": page,
+        "total_pages": total_pages,
+    }
+
+
+@router.get("/time", response_class=HTMLResponse)
+def time_page(request: Request, project_id: str = "", date_filter: str = "7d",
+              page: int = 1, session: Session = Depends(get_session)):
+    ctx = _time_context(session, project_id, date_filter, page)
+    return templates.TemplateResponse(request, "time.html", ctx)
+
+
+@router.get("/time/entries", response_class=HTMLResponse)
+def time_entries_partial(request: Request, project_id: str = "", date_filter: str = "7d",
+                         page: int = 1, session: Session = Depends(get_session)):
+    ctx = _time_context(session, project_id, date_filter, page)
+    return templates.TemplateResponse(request, "_time_entries_table.html", ctx)
 
 
 @router.get("/time/new", response_class=HTMLResponse)

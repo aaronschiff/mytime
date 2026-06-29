@@ -209,7 +209,7 @@ The today view wraps the timer list in `<div id="timers">`. Start/stop/set-time/
 
 - **Today page:** Live timer with start/stop; two-mode add (auto-start or save with time); click-to-edit elapsed time (HH:MM); keyboard shortcuts: `s` stop/start, `n` focus new-entry form. Layout: "Total today" below h1, "Create timer" card with form, "Today's time entries" table, shortcuts hint at bottom.
 - **Projects:** CRUD with budget tracking; archive/unarchive; guarded delete; GST toggle per project; client+project name uniqueness enforced; archived projects: Edit hidden, Unarchive shown; blocked from new time entries and invoices; projects list sorted reverse-chronological with date-started column
-- **Time entries:** Log manual entries (hh:mm or plain hours); edit/delete guarded by invoice lock and project archived status; future-date confirmation; ≥10h entry confirmation; notes truncated to 3 words in all list views
+- **Time entries:** Log manual entries (hh:mm or plain hours); edit/delete guarded by invoice lock and project archived status; future-date confirmation; ≥10h entry confirmation; notes truncated to 3 words in all list views; date filter buttons (Last 7 days / Last 30 days / All, default 7d) with 30-entry pagination; pagination uses HTMX in-place swap (no full page reload)
 - **Invoicing:** Build per project, group by task type, live dollar amounts with cents; GST rows in table footer when enabled; auto-suggested numeric invoice numbers; void blocked for archived projects; invoice list in project detail shows cents
 - **Invoice view:** Amount column right-aligned; all values show cents
 - **Invoice list:** `/invoices` — all invoices reverse-chronological
