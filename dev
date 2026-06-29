@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+cd "$(dirname "$0")"
+
+MYTIME_DB_URL="sqlite:///$(pwd)/dev.db" \
+  uv run uvicorn mytime.main:app --reload --port 8001 &
+
+SERVER_PID=$!
+
+# Wait for the server to accept connections
+until curl -s -o /dev/null http://localhost:8001/today; do sleep 0.2; done
+
+open -a Safari http://localhost:8001/today
+
+wait $SERVER_PID

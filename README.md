@@ -20,12 +20,39 @@ A single-user, LAN-only web app for tracking consulting time via live timers and
 
 ## Running locally
 
-```bash
-# Start the server with auto-reload
-uv run uvicorn mytime.main:app --reload
+### Quick start (empty database)
 
-# Then visit: http://localhost:8000/today
+```bash
+uv run uvicorn mytime.main:app --reload
+# Visit: http://localhost:8000/today
 ```
+
+### Local dev/testing instance (with seed data)
+
+A separate instance on port 8001 uses `dev.db` instead of `mytime.db`, so it never touches the production database on `bbbee.local`.
+
+**Seed the database** (re-runnable — deletes and recreates `dev.db`):
+
+```bash
+uv run python scripts/seed_dev.py
+```
+
+This populates ~6 months of realistic data: 3 clients, 6 projects (4 active, 2 archived), 5 task types, 152 time entries, and 5 invoices. Projects include GST-enabled and non-GST variants, over-budget and under-budget scenarios, and both invoiced and uninvoiced work.
+
+**Start the dev server** (code changes reload automatically — no deploy step):
+
+```bash
+./dev
+```
+
+This starts uvicorn on port 8001, waits until it's up, and opens Safari. Ctrl-C stops the server. Equivalent to:
+
+```bash
+MYTIME_DB_URL=sqlite:///dev.db uv run uvicorn mytime.main:app --reload --port 8001
+# Visit: http://localhost:8001/today
+```
+
+The `--reload` flag watches for source file changes and restarts automatically, so edits are live on the next page refresh.
 
 ## Running tests
 
@@ -91,6 +118,9 @@ Live elapsed = `seconds + (now - running_since)`. The `timers.live_elapsed()` se
 ## Project layout
 
 ```
+scripts/
+  seed_dev.py       # Populate dev.db with 6 months of dummy data (re-runnable)
+dev                 # Shell script: seed check + start dev server on :8001 + open Safari
 mytime/
   main.py           # FastAPI app + lifespan (calls init_db)
   db.py             # Engine, session factory, _MIGRATIONS list
