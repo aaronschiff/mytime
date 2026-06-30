@@ -19,10 +19,8 @@ def fmt_date(d) -> str:
     return d.strftime("%d-%m-%Y")
 
 
-def fmt_time(dt: datetime | None) -> str:
-    if dt is None:
-        return ""
-    return dt.strftime("%H:%M")
+def fmt_datetime(dt: datetime) -> str:
+    return dt.strftime("%Y-%m-%d %H:%M")
 
 
 def parse_hm(hours: int, minutes: int) -> int:

@@ -35,9 +35,8 @@ def test_fmt_date():
     assert fmt.fmt_date(datetime(2026, 6, 25, 14, 30, 0)) == "25-06-2026"
 
 
-def test_fmt_time():
-    assert fmt.fmt_time(datetime(2026, 6, 25, 9, 5, 0)) == "09:05"
-    assert fmt.fmt_time(None) == ""
+def test_fmt_datetime():
+    assert fmt.fmt_datetime(datetime(2026, 6, 25, 9, 5, 0)) == "2026-06-25 09:05"
 
 
 def test_parse_duration():

@@ -8,7 +8,7 @@ from mytime.models import Invoice, Project, TaskType
 from mytime.services import time_entries, timers
 
 CSV_COLUMNS = [
-    "entry_id", "date", "time_started", "client", "project", "task_type", "notes",
+    "entry_id", "date", "created_at", "client", "project", "task_type", "notes",
     "hourly_rate", "hours", "amount", "invoice_number",
     "running", "project_status",
 ]
@@ -21,9 +21,7 @@ def _q(value) -> Decimal:
 def time_entries_csv_rows(session: Session, at: datetime | None = None) -> list[dict]:
     at = at or clock.now()
     entries = time_entries.list_entries(session)
-    # Within a date, entries with no recorded start time (manually added,
-    # never timed) sort first; timed entries follow in start-time order.
-    entries.sort(key=lambda e: (e.entry_date, e.first_started_at or datetime.min, e.id))
+    entries.sort(key=lambda e: (e.entry_date, e.created_at, e.id))
 
     projects = {p.id: p for p in session.scalars(select(Project))}
     task_names = {t.id: t.name for t in session.scalars(select(TaskType))}
@@ -36,9 +34,7 @@ def time_entries_csv_rows(session: Session, at: datetime | None = None) -> list[
         rows.append({
             "entry_id": e.id,
             "date": e.entry_date.isoformat(),
-            "time_started": format.fmt_time(
-                clock.to_local(e.first_started_at) if e.first_started_at is not None else None
-            ),
+            "created_at": format.fmt_datetime(clock.to_local(e.created_at)),
             "client": project.client_name,
             "project": project.name,
             "task_type": task_names[e.task_type_id],
