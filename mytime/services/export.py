@@ -9,7 +9,7 @@ from mytime.services import time_entries, timers
 
 CSV_COLUMNS = [
     "entry_id", "date", "client", "project", "task_type", "notes",
-    "hourly_rate", "hours", "amount", "invoiced", "invoice_number",
+    "hourly_rate", "hours", "amount", "invoice_number",
     "running", "project_status",
 ]
 
@@ -41,7 +41,6 @@ def time_entries_csv_rows(session: Session, at: datetime | None = None) -> list[
             "hourly_rate": _q(project.hourly_rate),
             "hours": hours,
             "amount": _q(hours * project.hourly_rate),
-            "invoiced": "Yes" if e.invoice_id is not None else "No",
             "invoice_number": invoice_numbers.get(e.invoice_id, "") if e.invoice_id is not None else "",
             "running": "Yes" if e.running_since is not None else "No",
             "project_status": project.status,

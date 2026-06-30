@@ -35,7 +35,6 @@ def test_csv_rows_for_stopped_entry(session):
     assert row["hourly_rate"] == Decimal("100.00")
     assert row["hours"] == Decimal("1.00")
     assert row["amount"] == Decimal("100.00")
-    assert row["invoiced"] == "No"
     assert row["invoice_number"] == ""
     assert row["running"] == "No"
     assert row["project_status"] == "active"
@@ -54,7 +53,7 @@ def test_csv_rows_use_live_elapsed_for_running_timer(session):
     assert row["amount"] == Decimal("250.00")
 
 
-def test_csv_rows_reflect_invoiced_status(session):
+def test_csv_rows_reflect_invoice_number(session):
     project, task, entry = _seed(session)
     invoice = Invoice(
         project_id=project.id, cutoff_date=date(2026, 1, 6),
@@ -69,7 +68,6 @@ def test_csv_rows_reflect_invoiced_status(session):
     rows = export.time_entries_csv_rows(session)
 
     row = rows[0]
-    assert row["invoiced"] == "Yes"
     assert row["invoice_number"] == "INV-001"
 
 
@@ -107,7 +105,7 @@ def test_export_route_returns_csv(client):
     header = next(reader)
     assert header == [
         "entry_id", "date", "client", "project", "task_type", "notes",
-        "hourly_rate", "hours", "amount", "invoiced", "invoice_number",
+        "hourly_rate", "hours", "amount", "invoice_number",
         "running", "project_status",
     ]
     assert list(reader) == []
