@@ -20,3 +20,10 @@ def today() -> date:
     if _TZ is not None:
         return datetime.now(_TZ).date()
     return date.today()
+
+
+def to_local(dt: datetime) -> datetime:
+    """Convert a naive UTC datetime (the storage convention) to naive local
+    wall-clock time for display, using MYTIME_TIMEZONE if set, otherwise the
+    OS local timezone — mirrors today()'s fallback."""
+    return dt.replace(tzinfo=timezone.utc).astimezone(_TZ).replace(tzinfo=None)

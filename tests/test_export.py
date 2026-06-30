@@ -54,14 +54,18 @@ def test_csv_rows_use_live_elapsed_for_running_timer(session):
     assert row["amount"] == Decimal("250.00")
 
 
-def test_csv_rows_includes_time_started(session):
+def test_csv_rows_includes_time_started_converted_to_local_time(session, monkeypatch):
+    from zoneinfo import ZoneInfo
+    from mytime import clock
+    monkeypatch.setattr(clock, "_TZ", ZoneInfo("Pacific/Auckland"))
+
     project, task, entry = _seed(session)
-    entry.first_started_at = datetime(2026, 1, 5, 9, 30, 0)
+    entry.first_started_at = datetime(2026, 1, 5, 1, 30, 0)  # 01:30 UTC = 14:30 NZDT
     session.commit()
 
     rows = export.time_entries_csv_rows(session)
 
-    assert rows[0]["time_started"] == "09:30"
+    assert rows[0]["time_started"] == "14:30"
 
 
 def test_csv_rows_reflect_invoice_number(session):

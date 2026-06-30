@@ -36,7 +36,9 @@ def time_entries_csv_rows(session: Session, at: datetime | None = None) -> list[
         rows.append({
             "entry_id": e.id,
             "date": e.entry_date.isoformat(),
-            "time_started": format.fmt_time(e.first_started_at),
+            "time_started": format.fmt_time(
+                clock.to_local(e.first_started_at) if e.first_started_at is not None else None
+            ),
             "client": project.client_name,
             "project": project.name,
             "task_type": task_names[e.task_type_id],
