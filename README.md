@@ -2,6 +2,12 @@
 
 A single-user, LAN-only web app for tracking consulting time via live timers and managing per-project billing.
 
+## License and disclaimer
+
+Released under the [MIT License](LICENSE).
+
+This software is provided "as is", without warranty of any kind, express or implied. Use it at your own risk. The author assumes no responsibility or liability for any loss, damage, or other consequence resulting directly or indirectly from the use of this software, including but not limited to data loss, billing errors, or downtime. It was built for a single specific use case and has not been hardened for multi-tenant, public-internet, or business-critical deployment — review the code yourself before relying on it.
+
 ## Goals
 
 - Track time against projects using live start/stop timers
