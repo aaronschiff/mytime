@@ -86,7 +86,7 @@ The app binds to all interfaces on port 8000 by default. No authentication layer
 - **Design principles:** All non-trivial logic in `mytime/services/` as pure functions; templates only for view logic
 - **Durations:** Stored as integer seconds; displayed as `HH:MM` (rounded to nearest minute)
 - **Money:** `Decimal` throughout (SQLAlchemy `Numeric`), never float
-- **Clock:** `mytime.clock.now()` / `today()` wrap datetime for testability. `today()` honours the `MYTIME_TIMEZONE` env var (a tz database name, e.g. `Pacific/Auckland`); falls back to the server OS timezone.
+- **Clock:** `mytime.clock.now()` / `today()` wrap datetime for testability. **All stored datetimes are naive UTC** — `now()` returns naive UTC so duration math (`timers.live_elapsed`) is independent of the OS timezone and immune to DST. `today()` is the exception: it honours the `MYTIME_TIMEZONE` env var (a tz database name, e.g. `Pacific/Auckland`) to give the correct *local calendar date* for entry dates and the Today view; falls back to the server OS timezone. `live_elapsed` clamps a backward wall-clock step (never reports/banks less than already-accrued seconds).
 - **GST rate:** stored as a percentage value (e.g. `15` = 15%, not `0.15`)
 
 ## Data model

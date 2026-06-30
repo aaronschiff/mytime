@@ -1,4 +1,4 @@
-from datetime import datetime, date
+from datetime import datetime, date, timezone
 import os
 from zoneinfo import ZoneInfo
 
@@ -7,7 +7,13 @@ _TZ = ZoneInfo(_tz_name) if _tz_name else None
 
 
 def now() -> datetime:
-    return datetime.now()
+    """Current instant as a naive UTC datetime.
+
+    All datetimes in the app are stored and compared as naive UTC, so duration
+    math (e.g. timers.live_elapsed) is independent of the server's OS timezone
+    and immune to DST transitions. Local calendar dates use today() instead.
+    """
+    return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
 def today() -> date:

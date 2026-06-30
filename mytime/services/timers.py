@@ -10,7 +10,12 @@ from mytime.services import guards
 def live_elapsed(entry: TimeEntry, at: datetime) -> int:
     if entry.running_since is None:
         return entry.seconds
-    return entry.seconds + int((at - entry.running_since).total_seconds())
+    # Clamp the running delta at 0: if the wall clock steps backward so `at`
+    # precedes running_since, never report (or bank) less than already-accrued
+    # seconds. Worst case is under-counting a run that spans a backward step,
+    # never corrupting time already banked.
+    delta = int((at - entry.running_since).total_seconds())
+    return entry.seconds + max(0, delta)
 
 
 def running_timer(session: Session) -> TimeEntry | None:

@@ -43,6 +43,25 @@ def test_live_elapsed_includes_running_delta(session):
     assert timers.live_elapsed(e, datetime(2026, 6, 25, 9, 0, 42)) == 42
 
 
+def test_live_elapsed_clamps_backward_clock_step(session):
+    """If the wall clock steps backward (e.g. NTP correction) so `at` precedes
+    running_since, never report less than the already-banked seconds."""
+    p, t = _setup(session)
+    e = timers.add_timer(session, p.id, t.id, None, datetime(2026, 6, 25, 9, 0, 0))
+    e.seconds = 300  # already banked from a prior run
+    # `at` is before the timer started — a backward step
+    assert timers.live_elapsed(e, datetime(2026, 6, 25, 8, 59, 0)) == 300
+
+
+def test_stop_never_banks_less_than_prior_seconds(session):
+    """Stopping across a backward clock step must not erase banked time."""
+    p, t = _setup(session)
+    e = timers.add_timer(session, p.id, t.id, None, datetime(2026, 6, 25, 9, 0, 0))
+    e.seconds = 300
+    timers.stop_timer(session, e.id, datetime(2026, 6, 25, 8, 59, 0))  # stop "before" start
+    assert e.seconds == 300 and e.running_since is None
+
+
 def test_restart_keeps_first_started_at(session):
     p, t = _setup(session)
     e = timers.add_timer(session, p.id, t.id, None, datetime(2026, 6, 25, 9, 0, 0))
