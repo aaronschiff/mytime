@@ -42,7 +42,7 @@
           </form>
         {% endif %}
         <form method="post" action="/projects/{{ p.id }}/delete" style="display:inline"
-              onsubmit="return confirm('Delete this project and its time entries?')">
+              onsubmit="return confirm('Delete this project? (Only possible if it has no tracked time.)')">
           <button>Delete</button>
         </form>
       </td>

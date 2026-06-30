@@ -12,6 +12,10 @@ class EntryLockedError(Exception):
     pass
 
 
+class ProjectHasTimeError(Exception):
+    pass
+
+
 class ClientHasTimeError(Exception):
     pass
 
@@ -22,10 +26,20 @@ def project_has_invoices(session: Session, project_id: int) -> bool:
     ).first() is not None
 
 
+def project_has_time(session: Session, project_id: int) -> bool:
+    return session.scalars(
+        select(TimeEntry.id).where(TimeEntry.project_id == project_id).limit(1)
+    ).first() is not None
+
+
 def delete_project(session: Session, project_id: int) -> None:
+    # Refuse to delete any project that has tracked time. Invoiced time would
+    # also have invoices (more specific message); uninvoiced time is potentially
+    # unbilled money. Either way the project should be archived, not deleted.
     if project_has_invoices(session, project_id):
         raise ProjectHasInvoicesError(project_id)
-    session.query(TimeEntry).filter(TimeEntry.project_id == project_id).delete()
+    if project_has_time(session, project_id):
+        raise ProjectHasTimeError(project_id)
     session.delete(session.get(Project, project_id))
     session.commit()
 

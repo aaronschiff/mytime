@@ -142,12 +142,17 @@ def set_status(project_id: int, status: str = Form(...), from_page: str = Form("
 def delete(project_id: int, request: Request, session: Session = Depends(get_session)):
     try:
         guards.delete_project(session, project_id)
-    except guards.ProjectHasInvoicesError:
+    except (guards.ProjectHasInvoicesError, guards.ProjectHasTimeError) as exc:
+        if isinstance(exc, guards.ProjectHasInvoicesError):
+            error = "Can't delete a project that has invoices. Void them first, or archive the project."
+        else:
+            error = "Can't delete a project that has tracked time — that time may be unbilled. Archive the project instead."
         ps = projects.list_projects(session, status="active")
         return templates.TemplateResponse(request, "projects.html", {
             "projects": ps,
             "summaries": {p.id: budget.project_summary(session, p) for p in ps},
             "currency": _currency(session),
             "status": "active",
+            "error": error,
         }, status_code=409)
     return RedirectResponse("/projects", status_code=303)

@@ -12,12 +12,22 @@ def _entry(session, project_id):
     return e
 
 
-def test_delete_project_without_invoices_removes_entries(session):
+def test_delete_project_with_uninvoiced_time_raises(session):
+    """Uninvoiced time is potentially unbilled money — deletion must refuse and
+    leave both the project and its entries intact."""
     p = projects.create_project(session, "C", "A", Decimal("1"), None, None)
     _entry(session, p.id)
+    with pytest.raises(guards.ProjectHasTimeError):
+        guards.delete_project(session, p.id)
+    assert projects.get_project(session, p.id) is not None
+    assert session.query(TimeEntry).count() == 1
+
+
+def test_delete_empty_project_succeeds(session):
+    """A project with no tracked time can still be deleted (e.g. created by mistake)."""
+    p = projects.create_project(session, "C", "A", Decimal("1"), None, None)
     guards.delete_project(session, p.id)
     assert projects.get_project(session, p.id) is None
-    assert session.query(TimeEntry).count() == 0
 
 
 def test_delete_project_with_invoices_raises(session):

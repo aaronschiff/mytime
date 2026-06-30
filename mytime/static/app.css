@@ -24,6 +24,7 @@ input[type=number] { -moz-appearance: textfield; }
 input[type=number]::-webkit-outer-spin-button,
 input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 .over-budget { color:#dc2626; }
+.error { background:#fef2f2; border:1px solid #fecaca; color:#b91c1c; padding:.6rem .9rem; border-radius:6px; }
 .swatch { display:inline-block; width:10px; height:10px; border-radius:2px; margin-right:3px; vertical-align:middle; }
 .swatch-inv { background:#1d4ed8; } .swatch-unv { background:#93c5fd; } .swatch-rem { background:#e2e8f0; border:1px solid #cbd5e1; }
 .bar-wrap { position:relative; margin-top:4px; }

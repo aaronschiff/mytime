@@ -32,3 +32,21 @@ def test_delete_blocked_with_invoice(client):
         break
     r = client.post("/projects/1/delete", follow_redirects=False)
     assert r.status_code == 409
+
+
+def test_delete_blocked_with_uninvoiced_time(client):
+    from mytime.models import TaskType, TimeEntry
+    from datetime import date
+    _make(client)
+    for dep in client.app.dependency_overrides.values():
+        gen = dep(); s = next(gen)
+        tt = TaskType(name="Dev"); s.add(tt); s.flush()
+        s.add(TimeEntry(project_id=1, task_type_id=tt.id,
+                        entry_date=date(2026, 6, 25), seconds=3600))
+        s.commit()
+        break
+    r = client.post("/projects/1/delete", follow_redirects=False)
+    assert r.status_code == 409
+    # The project and its time must survive, and the user must be told why.
+    assert "Site" in client.get("/projects").text
+    assert "tracked time" in r.text.lower()
