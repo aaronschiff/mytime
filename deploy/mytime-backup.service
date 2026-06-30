@@ -4,9 +4,14 @@ After=local-fs.target
 
 [Service]
 Type=oneshot
+# Generic template — set User and the paths below to match your deployment.
 User=mytime
 Environment=MYTIME_DB_PATH=/opt/mytime/mytime.db
 Environment=MYTIME_BACKUP_DIR=/var/backups/mytime
-ExecStart=/usr/local/bin/uv run python /opt/mytime/deploy/backup.py
+# Off-site copy (different host/building). rsync over SSH; requires a key-based,
+# non-interactive SSH setup (an ~/.ssh/config alias is convenient). Uncomment:
+# Environment=MYTIME_OFFSITE_DEST=user@host:/path/to/backups
+# backup.py is stdlib-only, so the system Python is sufficient (no uv needed).
+ExecStart=/usr/bin/python3 /opt/mytime/deploy/backup.py
 StandardOutput=journal
 StandardError=journal
