@@ -1,11 +1,14 @@
+import csv
+import io
 from decimal import Decimal
 
 from fastapi import APIRouter, Depends, Form, Request
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from sqlalchemy.orm import Session
 
+from mytime import clock
 from mytime.db import get_session
-from mytime.services import settings_service, task_types
+from mytime.services import export, settings_service, task_types
 from mytime.templating import templates
 
 router = APIRouter()
@@ -48,3 +51,17 @@ def rename_task(task_type_id: int, name: str = Form(...), session: Session = Dep
 def toggle_task(task_type_id: int, active: int = Form(...), session: Session = Depends(get_session)):
     task_types.set_active(session, task_type_id, bool(active))
     return RedirectResponse("/settings", status_code=303)
+
+
+@router.get("/settings/export")
+def export_csv(session: Session = Depends(get_session)):
+    buf = io.StringIO()
+    writer = csv.DictWriter(buf, fieldnames=export.CSV_COLUMNS)
+    writer.writeheader()
+    writer.writerows(export.time_entries_csv_rows(session))
+    filename = f"mytime-export-{clock.today().isoformat()}.csv"
+    return Response(
+        buf.getvalue(),
+        media_type="text/csv",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
