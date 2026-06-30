@@ -3,12 +3,12 @@ from decimal import Decimal, ROUND_HALF_UP
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from mytime import clock
+from mytime import clock, format
 from mytime.models import Invoice, Project, TaskType
 from mytime.services import time_entries, timers
 
 CSV_COLUMNS = [
-    "entry_id", "date", "client", "project", "task_type", "notes",
+    "entry_id", "date", "time_started", "client", "project", "task_type", "notes",
     "hourly_rate", "hours", "amount", "invoice_number",
     "running", "project_status",
 ]
@@ -21,7 +21,9 @@ def _q(value) -> Decimal:
 def time_entries_csv_rows(session: Session, at: datetime | None = None) -> list[dict]:
     at = at or clock.now()
     entries = time_entries.list_entries(session)
-    entries.sort(key=lambda e: e.id)
+    # Within a date, entries with no recorded start time (manually added,
+    # never timed) sort first; timed entries follow in start-time order.
+    entries.sort(key=lambda e: (e.entry_date, e.first_started_at or datetime.min, e.id))
 
     projects = {p.id: p for p in session.scalars(select(Project))}
     task_names = {t.id: t.name for t in session.scalars(select(TaskType))}
@@ -34,6 +36,7 @@ def time_entries_csv_rows(session: Session, at: datetime | None = None) -> list[
         rows.append({
             "entry_id": e.id,
             "date": e.entry_date.isoformat(),
+            "time_started": format.fmt_time(e.first_started_at),
             "client": project.client_name,
             "project": project.name,
             "task_type": task_names[e.task_type_id],

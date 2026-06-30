@@ -3,7 +3,7 @@ import io
 from datetime import date, datetime
 from decimal import Decimal
 
-from mytime.models import Invoice
+from mytime.models import Invoice, TimeEntry
 from mytime.services import export, projects, task_types, time_entries, timers
 
 
@@ -28,6 +28,7 @@ def test_csv_rows_for_stopped_entry(session):
     row = rows[0]
     assert row["entry_id"] == entry.id
     assert row["date"] == "2026-01-05"
+    assert row["time_started"] == ""
     assert row["client"] == "Acme Co"
     assert row["project"] == "Website"
     assert row["task_type"] == "Development"
@@ -53,6 +54,16 @@ def test_csv_rows_use_live_elapsed_for_running_timer(session):
     assert row["amount"] == Decimal("250.00")
 
 
+def test_csv_rows_includes_time_started(session):
+    project, task, entry = _seed(session)
+    entry.first_started_at = datetime(2026, 1, 5, 9, 30, 0)
+    session.commit()
+
+    rows = export.time_entries_csv_rows(session)
+
+    assert rows[0]["time_started"] == "09:30"
+
+
 def test_csv_rows_reflect_invoice_number(session):
     project, task, entry = _seed(session)
     invoice = Invoice(
@@ -71,20 +82,35 @@ def test_csv_rows_reflect_invoice_number(session):
     assert row["invoice_number"] == "INV-001"
 
 
-def test_csv_rows_ordered_by_entry_id(session):
+def test_csv_rows_ordered_by_date_and_time_started(session):
     project = projects.create_project(
         session, "Acme Co", "Website", hourly_rate=Decimal("100"),
         budget=None, description=None,
     )
     task = task_types.add_task_type(session, "Development")
-    # Entry dates deliberately out of order so the test distinguishes
-    # sort-by-id from sort-by-date.
-    first = time_entries.create_entry(session, project.id, task.id, date(2026, 1, 10), seconds=60, notes=None)
-    second = time_entries.create_entry(session, project.id, task.id, date(2026, 1, 1), seconds=60, notes=None)
+
+    def _entry(entry_date, first_started_at):
+        e = TimeEntry(
+            project_id=project.id, task_type_id=task.id, entry_date=entry_date,
+            seconds=60, first_started_at=first_started_at,
+        )
+        session.add(e)
+        session.commit()
+        return e
+
+    # Created out of order, on purpose, to prove the export re-sorts them.
+    later_date = _entry(date(2026, 1, 2), datetime(2026, 1, 2, 10, 0, 0))
+    no_start_time = _entry(date(2026, 1, 1), None)
+    late_start = _entry(date(2026, 1, 1), datetime(2026, 1, 1, 14, 0, 0))
+    early_start = _entry(date(2026, 1, 1), datetime(2026, 1, 1, 9, 0, 0))
 
     rows = export.time_entries_csv_rows(session)
 
-    assert [r["entry_id"] for r in rows] == [first.id, second.id]
+    # Within a date, entries with no recorded start time (manually added,
+    # never timed) sort first; timed entries follow in start-time order.
+    assert [r["entry_id"] for r in rows] == [
+        no_start_time.id, early_start.id, late_start.id, later_date.id,
+    ]
 
 
 def test_csv_rows_empty_database(session):
@@ -106,7 +132,7 @@ def test_export_route_returns_csv(client):
     reader = csv.reader(io.StringIO(resp.text))
     header = next(reader)
     assert header == [
-        "entry_id", "date", "client", "project", "task_type", "notes",
+        "entry_id", "date", "time_started", "client", "project", "task_type", "notes",
         "hourly_rate", "hours", "amount", "invoice_number",
         "running", "project_status",
     ]
