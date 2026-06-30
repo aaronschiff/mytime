@@ -3,6 +3,9 @@ __pycache__/
 .venv/
 mytime.db
 dev.db
+*.db-wal
+*.db-shm
+*.db-journal
 .pytest_cache/
 WORKLOG.md
 TESTING*.md

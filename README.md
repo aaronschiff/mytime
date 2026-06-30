@@ -111,6 +111,10 @@ The app binds to all interfaces on port 8000 by default. No authentication layer
 
 Live elapsed = `seconds + (now - running_since)`. The `timers.live_elapsed()` service function handles this. Stopping a timer flushes the running delta into `seconds` and clears `running_since`.
 
+### Connection hardening
+
+`db.configure_engine()` registers a `connect` listener that runs `PRAGMA busy_timeout=5000` (wait for locks instead of failing with "database is locked") and `PRAGMA journal_mode=WAL` (concurrent reads during writes, more crash-resilient than the default rollback journal) on every connection. WAL creates `mytime.db-wal` / `mytime.db-shm` sidecar files; the deploy rsync excludes `mytime.db*` so they're never deleted out from under the running app, and backups use the SQLite online-backup API (which handles WAL correctly — a plain file copy would not).
+
 ### Schema migrations
 
 `db.py` holds a `_MIGRATIONS` list of `ALTER TABLE` statements. Each is executed with `try/except` on startup (idempotent — fails silently if the column already exists). To add a column: append the SQL to `_MIGRATIONS` **and** add the field to `models.py`. `Base.metadata.create_all` handles new tables; `_MIGRATIONS` handles new columns on existing tables.

@@ -1,13 +1,34 @@
 import os
 from collections.abc import Iterator
 
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine, event, text
 from sqlalchemy.orm import Session, sessionmaker
 
 from mytime.models import Base, Client, Project
 
+
+def configure_engine(engine) -> None:
+    """Harden SQLite connections for safe concurrent single-writer access.
+
+    - busy_timeout: wait (up to 5s) for a lock instead of failing immediately
+      with "database is locked" — applied per connection, so it must run on
+      every connect, not just the first.
+    - WAL journalling: lets readers proceed during a write and is more
+      crash-resilient than the default rollback journal. WAL is persisted in the
+      database header, so setting it repeatedly is a harmless no-op. (Safe now
+      that backups use the SQLite online-backup API rather than a file copy.)
+    """
+    @event.listens_for(engine, "connect")
+    def _set_sqlite_pragmas(dbapi_conn, _conn_record):
+        cur = dbapi_conn.cursor()
+        cur.execute("PRAGMA busy_timeout=5000")
+        cur.execute("PRAGMA journal_mode=WAL")
+        cur.close()
+
+
 DB_URL = os.environ.get("MYTIME_DB_URL", "sqlite:///mytime.db")
 engine = create_engine(DB_URL, connect_args={"check_same_thread": False})
+configure_engine(engine)
 SessionLocal = sessionmaker(bind=engine, expire_on_commit=False)
 
 _MIGRATIONS = [
