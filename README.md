@@ -81,6 +81,15 @@ sudo systemctl enable --now mytime
 
 The app binds to all interfaces on port 8000 by default. No authentication layer — intended for trusted LAN use only. Restrict access with a firewall if needed (e.g. `ufw allow from 192.168.0.0/16 to any port 8000`).
 
+### Backups
+
+`deploy/backup.py` (run nightly via `deploy/mytime-backup.{service,timer}`) takes a **transactionally consistent** snapshot using SQLite's online-backup API (safe to run while the app writes; handles WAL correctly — a plain file copy would not), **verifies** it (`PRAGMA integrity_check` + schema query) and exits non-zero discarding any bad file, then applies 28-day tiered retention. Set via env:
+
+- `MYTIME_DB_PATH`, `MYTIME_BACKUP_DIR` — live DB and on-host backup dir (prefer a physically separate disk).
+- `MYTIME_OFFSITE_DEST` — optional `user@host:/path` for an off-site rsync-over-SSH copy (key-based, non-interactive). Accumulates history independently of local pruning; an off-site failure is loud but never discards the verified local backup.
+
+The systemd unit **must** set the env vars explicitly — relying on defaults is how a misconfigured unit can silently back up the wrong path.
+
 ## Architecture
 
 - **Design principles:** All non-trivial logic in `mytime/services/` as pure functions; templates only for view logic
@@ -169,7 +178,7 @@ tests/
   test_*.py         # 53 tests, all passing
 deploy/
   mytime.service    # systemd unit (generic /opt/mytime path)
-  backup.py         # 28-day tiered DB snapshot script
+  backup.py         # Consistent + verified DB snapshot; 28-day tiered retention; optional off-site push
 ```
 
 ## Key patterns
