@@ -21,7 +21,7 @@ def _q(value) -> Decimal:
 def time_entries_csv_rows(session: Session, at: datetime | None = None) -> list[dict]:
     at = at or clock.now()
     entries = time_entries.list_entries(session)
-    entries.sort(key=lambda e: (e.entry_date, e.id))
+    entries.sort(key=lambda e: e.id)
 
     projects = {p.id: p for p in session.scalars(select(Project))}
     task_names = {t.id: t.name for t in session.scalars(select(TaskType))}

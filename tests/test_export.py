@@ -71,18 +71,20 @@ def test_csv_rows_reflect_invoice_number(session):
     assert row["invoice_number"] == "INV-001"
 
 
-def test_csv_rows_ordered_chronologically(session):
+def test_csv_rows_ordered_by_entry_id(session):
     project = projects.create_project(
         session, "Acme Co", "Website", hourly_rate=Decimal("100"),
         budget=None, description=None,
     )
     task = task_types.add_task_type(session, "Development")
-    time_entries.create_entry(session, project.id, task.id, date(2026, 1, 10), seconds=60, notes=None)
-    time_entries.create_entry(session, project.id, task.id, date(2026, 1, 1), seconds=60, notes=None)
+    # Entry dates deliberately out of order so the test distinguishes
+    # sort-by-id from sort-by-date.
+    first = time_entries.create_entry(session, project.id, task.id, date(2026, 1, 10), seconds=60, notes=None)
+    second = time_entries.create_entry(session, project.id, task.id, date(2026, 1, 1), seconds=60, notes=None)
 
     rows = export.time_entries_csv_rows(session)
 
-    assert [r["date"] for r in rows] == ["2026-01-01", "2026-01-10"]
+    assert [r["entry_id"] for r in rows] == [first.id, second.id]
 
 
 def test_csv_rows_empty_database(session):
