@@ -4,6 +4,21 @@ def _setup(client):
     client.post("/settings/task-types", data={"name": "Analysis"}, follow_redirects=False)
 
 
+def test_add_with_invalid_duration_is_rejected(client):
+    """A duration the server can't parse must not be silently saved as a
+    0-second entry — that's lost time. Reject with an error instead."""
+    from mytime.models import TimeEntry
+    _setup(client)
+    r = client.post("/today/add", data={"project_id": "1", "task_type_id": "1",
+                    "notes": "", "duration": "2:99", "start": "0"}, follow_redirects=False)
+    assert r.status_code == 400
+    assert "duration" in r.text.lower()
+    for dep in client.app.dependency_overrides.values():
+        gen = dep(); s = next(gen)
+        assert s.query(TimeEntry).count() == 0  # nothing created
+        break
+
+
 def test_add_timer_and_stop(client):
     _setup(client)
     assert client.get("/today").status_code == 200

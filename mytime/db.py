@@ -2,6 +2,7 @@ import os
 from collections.abc import Iterator
 
 from sqlalchemy import create_engine, event, text
+from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session, sessionmaker
 
 from mytime.models import Base, Client, Project
@@ -62,15 +63,28 @@ def _populate_client_ids(session) -> None:
     session.commit()
 
 
+def _apply_migration(conn, stmt: str) -> None:
+    """Run one ALTER TABLE migration idempotently.
+
+    Migrations are all column adds, so a "duplicate column name" error means the
+    migration is already applied — the only error we should swallow. Anything
+    else (missing table, locked or full disk, malformed SQL) is a real problem
+    and must surface rather than be silently ignored.
+    """
+    try:
+        conn.execute(text(stmt))
+        conn.commit()
+    except OperationalError as exc:
+        conn.rollback()
+        if "duplicate column name" not in str(exc.orig).lower():
+            raise
+
+
 def init_db() -> None:
     Base.metadata.create_all(engine)
     with engine.connect() as conn:
         for stmt in _MIGRATIONS:
-            try:
-                conn.execute(text(stmt))
-                conn.commit()
-            except Exception:
-                pass
+            _apply_migration(conn, stmt)
     with SessionLocal() as session:
         _populate_client_ids(session)
 

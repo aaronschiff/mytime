@@ -47,6 +47,7 @@ def _body(request: Request, session: Session) -> HTMLResponse:
 
 @router.post("/today/add")
 def add(
+    request: Request,
     project_id: int = Form(...), task_type_id: int = Form(...),
     notes: str = Form(""), duration: str = Form("00:00"), start: int = Form(1),
     session: Session = Depends(get_session),
@@ -55,7 +56,15 @@ def add(
         timers.add_timer(session, project_id, task_type_id, notes, now())
     else:
         seconds = parse_duration(duration)
-        te.create_entry(session, project_id, task_type_id, today(), seconds or 0, notes)
+        if seconds is None:
+            # Don't silently store 0 — that would lose the time the user meant.
+            ctx = _context(session)
+            ctx["error"] = (
+                f"Couldn't read the duration {duration!r}. "
+                "Use hh:mm (minutes 00–59) or a whole number of hours."
+            )
+            return templates.TemplateResponse(request, "today.html", ctx, status_code=400)
+        te.create_entry(session, project_id, task_type_id, today(), seconds, notes)
     return RedirectResponse("/today", status_code=303)
 
 

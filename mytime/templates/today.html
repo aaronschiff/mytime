@@ -2,6 +2,7 @@
 {% block title %}Today — mytime{% endblock %}
 {% block content %}
 <h1>Today <span class="muted">{{ day | date }}</span></h1>
+{% if error %}<p class="error" role="alert">{{ error }}</p>{% endif %}
 <p>Total today: <strong data-total-seconds="{{ total_seconds }}">{{ total_seconds | hm }}</strong></p>
 <div class="card">
   <h2 style="margin:0 0 .75rem">Create timer</h2>
