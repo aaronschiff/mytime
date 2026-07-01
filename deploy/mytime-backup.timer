@@ -3,7 +3,7 @@ Description=Daily mytime database backup
 Requires=mytime-backup.service
 
 [Timer]
-OnCalendar=daily
+OnCalendar=*-*-* 00:04:00 Pacific/Auckland
 Persistent=true
 RandomizedDelaySec=300
 
