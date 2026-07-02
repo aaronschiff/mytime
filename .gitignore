@@ -10,5 +10,6 @@ dev.db
 WORKLOG.md
 TESTING*.md
 docs/superpowers/
+.superpowers/
 deploy/deploy-bbbee.sh
 deploy/bbbee.md
