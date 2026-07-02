@@ -3,7 +3,7 @@
 {% block content %}
 <h1>Invoices</h1>
 {% if invoices %}
-<table>
+<table class="responsive">
   <thead>
     <tr>
       <th>Invoice #</th>
@@ -18,12 +18,12 @@
   {% for inv in invoices %}
     {% set proj = all_projects.get(inv.project_id) %}
     <tr>
-      <td><a href="/invoices/{{ inv.id }}">{{ inv.invoice_number or ('#' ~ inv.id) }}</a></td>
-      <td>{% if proj %}<a href="/projects/{{ proj.id }}">{{ proj.client_name }} — {{ proj.name }}</a>{% else %}—{% endif %}</td>
-      <td>{{ inv.label or '—' }}</td>
-      <td>{{ inv.created_at | date }}</td>
-      <td>{{ inv.cutoff_date | date }}</td>
-      <td>{{ inv.total_amount | money(currency) }}</td>
+      <td data-label="Invoice #"><a href="/invoices/{{ inv.id }}">{{ inv.invoice_number or ('#' ~ inv.id) }}</a></td>
+      <td data-label="Project">{% if proj %}<a href="/projects/{{ proj.id }}">{{ proj.client_name }} — {{ proj.name }}</a>{% else %}—{% endif %}</td>
+      <td data-label="Label">{{ inv.label or '—' }}</td>
+      <td data-label="Created">{{ inv.created_at | date }}</td>
+      <td data-label="Cut-off">{{ inv.cutoff_date | date }}</td>
+      <td data-label="Total">{{ inv.total_amount | money(currency) }}</td>
     </tr>
   {% endfor %}
   </tbody>

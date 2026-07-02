@@ -8,13 +8,13 @@
   </form>
 </p>
 {% endif %}
-<table>
+<table class="responsive">
   <thead><tr><th>Date</th><th>Task</th><th>Time</th><th>Notes</th></tr></thead>
   <tbody>
   {% for e in entries %}
     <tr class="{{ 'locked' if e.invoice_id }}">
-      <td class="nowrap tabnum">{{ e.entry_date | date }}</td><td>{{ task_names[e.task_type_id] }}</td>
-      <td class="tabnum">{{ e.seconds | hm }}</td><td class="notes">{{ (e.notes or "") | truncate_words }}</td>
+      <td data-label="Date" class="nowrap tabnum">{{ e.entry_date | date }}</td><td data-label="Task">{{ task_names[e.task_type_id] }}</td>
+      <td data-label="Time" class="tabnum">{{ e.seconds | hm }}</td><td data-label="Notes" class="notes">{{ (e.notes or "") | truncate_words }}</td>
     </tr>
   {% endfor %}
   </tbody>
@@ -24,14 +24,14 @@
 {% if project.status == 'active' %}
 <p><form method="get" action="/projects/{{ project.id }}/invoices/new" style="display:inline"><button>+ New invoice</button></form></p>
 {% endif %}
-<table>
+<table class="responsive">
   <thead><tr><th>#</th><th>Label</th><th>Date</th><th>Cut-off</th><th class="num">Total</th></tr></thead>
   <tbody>
   {% for inv in invoices %}
-    <tr><td><a href="/invoices/{{ inv.id }}">{{ inv.invoice_number or inv.id }}</a></td>
-        <td>{{ inv.label or '—' }}</td>
-        <td class="nowrap tabnum">{{ inv.created_at | date }}</td><td class="nowrap tabnum">{{ inv.cutoff_date | date }}</td>
-        <td class="tabnum">{{ inv.total_amount | money_cents(currency) }}</td></tr>
+    <tr><td data-label="#"><a href="/invoices/{{ inv.id }}">{{ inv.invoice_number or inv.id }}</a></td>
+        <td data-label="Label">{{ inv.label or '—' }}</td>
+        <td data-label="Date" class="nowrap tabnum">{{ inv.created_at | date }}</td><td data-label="Cut-off" class="nowrap tabnum">{{ inv.cutoff_date | date }}</td>
+        <td data-label="Total" class="tabnum">{{ inv.total_amount | money_cents(currency) }}</td></tr>
   {% endfor %}
   </tbody>
 </table>

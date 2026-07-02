@@ -6,7 +6,7 @@
   <div class="card">
     <strong><a href="/projects/{{ s.project.id }}">{{ s.project.client_name }} — {{ s.project.name }}</a></strong>
     <span class="muted">· <span class="tabnum">{{ s.project.hourly_rate | money(currency) }}</span>/h</span>
-    <form method="get" action="/projects/{{ s.project.id }}/invoices/new" style="display:inline;margin-left:.5rem"><button>New invoice</button></form>
+    <form method="get" action="/projects/{{ s.project.id }}/invoices/new" class="new-invoice-form"><button>New invoice</button></form>
     {% include "_budget_bar.html" %}
   </div>
 {% else %}

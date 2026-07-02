@@ -23,10 +23,10 @@
 </div>
 <h2 style="margin:2rem 0 .5rem">Today's time entries:</h2>
 <div id="timers">{% include "_today_body.html" %}</div>
-<p class="muted" style="font-size:.85rem;margin:2rem 0 .25rem">Shortcuts: <kbd>s</kbd> stop/start running timer · <kbd>n</kbd> focus new entry form</p>
+<p class="muted kbd-hint" style="font-size:.85rem;margin:2rem 0 .25rem">Shortcuts: <kbd>s</kbd> stop/start running timer · <kbd>n</kbd> focus new entry form</p>
 {% endblock %}
 {% block scripts %}
-<script src="/static/timer-tick.js" defer></script>
+<script src="/static/timer-tick.js?v={{ static_version('timer-tick.js') }}" defer></script>
 <script>
 (function() {
   function isValidDuration(s) {

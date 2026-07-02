@@ -1,9 +1,9 @@
-<table>
+<table class="responsive">
   <tbody>
   {% for row in rows %}
     <tr class="{{ 'running' if row.running }}">
-      <td>{{ names[row.entry.project_id] }} · {{ task_names[row.entry.task_type_id] }}</td>
-      <td>
+      <td data-label="Timer">{{ names[row.entry.project_id] }} · {{ task_names[row.entry.task_type_id] }}</td>
+      <td data-label="Elapsed">
         {% if row.running %}
           <span class="elapsed" data-running="1"
                 data-base="{{ row.base }}" data-since="{{ row.since_iso }}">{{ row.elapsed | hm }}</span>
@@ -19,7 +19,7 @@
           </form>
         {% endif %}
       </td>
-      <td>
+      <td class="actions">
         {% if row.entry.invoice_id is not none %}
           <span class="muted">Invoiced</span>
         {% elif row.running %}

@@ -24,19 +24,19 @@
 
 <section>
   <h2>Task types</h2>
-  <table>
+  <table class="responsive">
     <thead><tr><th>Name</th><th>Status</th><th></th></tr></thead>
     <tbody>
     {% for t in task_types %}
       <tr>
-        <td>
-          <form method="post" action="/settings/task-types/{{ t.id }}/rename" style="display:inline">
+        <td data-label="Name">
+          <form id="rename-form-{{ t.id }}" class="rename-form" method="post" action="/settings/task-types/{{ t.id }}/rename" style="display:inline">
             <input type="text" name="name" value="{{ t.name }}">
-            <button type="submit">Rename</button>
           </form>
         </td>
-        <td>{{ "Active" if t.active else "Retired" }}</td>
-        <td>
+        <td data-label="Status">{{ "Active" if t.active else "Retired" }}</td>
+        <td class="actions">
+          <button type="submit" form="rename-form-{{ t.id }}">Rename</button>
           <form method="post" action="/settings/task-types/{{ t.id }}/active" style="display:inline">
             <input type="hidden" name="active" value="{{ 0 if t.active else 1 }}">
             <button type="submit">{{ "Retire" if t.active else "Reactivate" }}</button>
