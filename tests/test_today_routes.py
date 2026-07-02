@@ -30,3 +30,16 @@ def test_add_timer_and_stop(client):
     stop = client.post("/today/1/stop")            # returns the partial
     assert stop.status_code == 200
     assert "Start" in stop.text                    # now stopped
+
+
+def test_today_body_returns_running_partial(client):
+    """GET /today/body returns just the timer-list partial (not the full
+    page), reflecting current server state — this is what the cross-device
+    poll and the tab-focus refresh fetch."""
+    _setup(client)
+    client.post("/today/add", data={"project_id": "1", "task_type_id": "1", "notes": ""},
+                follow_redirects=False)
+    r = client.get("/today/body")
+    assert r.status_code == 200
+    assert "Stop" in r.text                  # the running timer shows its Stop control
+    assert "<html" not in r.text.lower()     # partial only — no full-page shell/nav

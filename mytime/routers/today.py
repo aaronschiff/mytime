@@ -47,6 +47,11 @@ def today_page(request: Request, session: Session = Depends(get_session)):
     return templates.TemplateResponse(request, "today.html", _context(session))
 
 
+@router.get("/today/body", response_class=HTMLResponse)
+def today_body(request: Request, session: Session = Depends(get_session)):
+    return _body(request, session)
+
+
 def _body(request: Request, session: Session) -> HTMLResponse:
     return templates.TemplateResponse(request, "_today_body.html", _context(session))
 
