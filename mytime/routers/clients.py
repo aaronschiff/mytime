@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from mytime.db import get_session
 from mytime.models import Invoice, Project
 from mytime.services import clients as clients_service, projects, settings_service, budget
-from mytime.services.guards import ClientHasTimeError
+from mytime.services.guards import ClientHasProjectsError
 from mytime.templating import templates
 
 router = APIRouter()
@@ -80,7 +80,7 @@ def update(client_id: int, name: str = Form(...), session: Session = Depends(get
 def delete(client_id: int, request: Request, session: Session = Depends(get_session)):
     try:
         clients_service.delete_client(session, client_id)
-    except ClientHasTimeError:
+    except ClientHasProjectsError:
         all_clients = clients_service.list_clients(session)
         all_projects = projects.list_projects(session)
         project_counts = {}
@@ -93,6 +93,6 @@ def delete(client_id: int, request: Request, session: Session = Depends(get_sess
             "project_counts": project_counts,
             "total_invoiced": total_invoiced,
             "currency": _currency(session),
-            "error": "Cannot delete client: they have projects with tracked time.",
+            "error": "Cannot delete client: they still have projects. Delete or reassign those projects first.",
         }, status_code=409)
     return RedirectResponse("/clients", status_code=303)

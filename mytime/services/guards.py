@@ -16,7 +16,7 @@ class ProjectHasTimeError(Exception):
     pass
 
 
-class ClientHasTimeError(Exception):
+class ClientHasProjectsError(Exception):
     pass
 
 
@@ -45,16 +45,15 @@ def delete_project(session: Session, project_id: int) -> None:
 
 
 def can_delete_client(session: Session, client_id: int) -> bool:
-    """Return False if any project linked to this client has any time entries."""
-    project_ids = session.scalars(
-        select(Project.id).where(Project.client_id == client_id)
-    ).all()
-    if not project_ids:
-        return True
-    has_time = session.scalars(
-        select(TimeEntry.id).where(TimeEntry.project_id.in_(project_ids)).limit(1)
-    ).first()
-    return has_time is None
+    """Return False if the client has any linked project at all.
+
+    A client can only be safely deleted once no project references it —
+    even a project with zero tracked time still holds a client_id that
+    would otherwise dangle once the client row is gone.
+    """
+    return session.scalars(
+        select(Project.id).where(Project.client_id == client_id).limit(1)
+    ).first() is None
 
 
 def ensure_unlocked(entry: TimeEntry) -> None:

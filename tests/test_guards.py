@@ -47,3 +47,27 @@ def test_ensure_unlocked(session):
     e.invoice_id = 1
     with pytest.raises(guards.EntryLockedError):
         guards.ensure_unlocked(e)
+
+
+def test_can_delete_client_false_when_client_has_a_zero_time_project(session):
+    """A client with a project that has never been tracked against must still
+    block deletion — deleting the client would leave that project's client_id
+    pointing at a row that no longer exists."""
+    from mytime.services import clients as clients_service
+    client = clients_service.create_client(session, "Acme")
+    projects.create_project(session, "Acme", "Website", Decimal("1"), None, None)
+    assert guards.can_delete_client(session, client.id) is False
+
+
+def test_can_delete_client_true_when_client_has_no_projects(session):
+    from mytime.services import clients as clients_service
+    client = clients_service.create_client(session, "Acme")
+    assert guards.can_delete_client(session, client.id) is True
+
+
+def test_delete_client_raises_for_zero_time_project(session):
+    from mytime.services import clients as clients_service
+    client = clients_service.create_client(session, "Acme")
+    projects.create_project(session, "Acme", "Website", Decimal("1"), None, None)
+    with pytest.raises(guards.ClientHasProjectsError):
+        clients_service.delete_client(session, client.id)

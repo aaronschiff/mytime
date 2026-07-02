@@ -2,7 +2,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from mytime.models import Client, Project
-from mytime.services.guards import ClientHasTimeError, can_delete_client
+from mytime.services.guards import ClientHasProjectsError, can_delete_client
 
 
 def list_clients(session: Session) -> list[Client]:
@@ -38,7 +38,7 @@ def update_client(session: Session, client_id: int, name: str) -> Client | None:
 
 def delete_client(session: Session, client_id: int) -> None:
     if not can_delete_client(session, client_id):
-        raise ClientHasTimeError(client_id)
+        raise ClientHasProjectsError(client_id)
     client = get_client(session, client_id)
     if client is not None:
         session.delete(client)
