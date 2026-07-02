@@ -10,10 +10,6 @@ These surfaced during the 2026-06-30/07-01 failure-point audit (see WORKLOG). Th
 - **Off-site SSH hardening (optional).** The off-site backup target's firewall could be tightened: web ports from Cloudflare ranges only, SSH (22) from known IPs only. See `deploy/bbbee.md` (gitignored) for the real target. Optional belt-and-suspenders.
 - **Deploy-script fixes live only locally.** `deploy/deploy-bbbee.sh` is gitignored (keeps server specifics out of the public repo) but holds safety-relevant logic — notably `--exclude='mytime.db*'` (so rsync `--delete` can't wipe the live WAL sidecar) and the full `uv` path. Those fixes exist only on the dev machine. Consider a tracked sanitised template (`deploy-bbbee.sh.example`) so the logic is version-controlled.
 
-## Dev-experience / test hygiene
-
-- **Flaky date-dependent test.** `test_time_routes.py::test_create_entry_and_list` hard-codes a 2026-06-25 entry and relies on the real `today()`, so it fails once the real date is >7 days later (default filter window). Freeze the clock in the test (inject `today()`), don't rely on wall-clock date.
-
 ## Deferred features for future work
 
 - **Midnight rollover:** A timer left running overnight already appears in today's view (the `running_since IS NOT NULL` clause) and can be stopped normally. The entry retains its original date, which is correct. What's unresolved is *auto-stopping* at midnight if desired.
