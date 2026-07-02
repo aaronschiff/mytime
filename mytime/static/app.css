@@ -1,7 +1,7 @@
 :root { --accent:#2563eb; --bg:#f8fafc; --line:#e2e8f0; --run:#16a34a; }
 * { box-sizing: border-box; }
 body { font-family: system-ui, sans-serif; margin:0; background:var(--bg); color:#0f172a; }
-.topnav { display:flex; padding:.75rem 1.5rem; background:#fff; border-bottom:1px solid var(--line); }
+.topnav { display:flex; padding:.75rem 1.5rem; background:#fff; border-bottom:1px solid var(--line); position:relative; }
 .topnav a { text-decoration:none; color:#334155; font-weight:600; }
 .topnav a:hover { color:var(--accent); }
 .nav-toggle, .nav-toggle-btn, .back-btn { display:none; }
@@ -72,9 +72,16 @@ button.current { background:#334155; color:#fff; border-color:#334155; }
     background:none; border:none; color:#334155;
   }
   .nav-toggle-btn { margin-left:auto; }
-  .nav-links { display:none; flex-basis:100%; flex-direction:column; gap:.25rem; margin-top:.5rem; }
+  .nav-links {
+    display:none; flex-direction:column; gap:.25rem;
+    position:absolute; top:calc(100% + .4rem); right:1rem;
+    background:#fff; border:1px solid var(--line); border-radius:8px;
+    padding:.5rem; box-shadow:0 4px 12px rgba(0,0,0,.12); z-index:20; min-width:9rem;
+  }
   #nav-toggle:checked ~ .nav-links { display:flex; }
-  .nav-links a { padding:.6rem .25rem; }
+  .nav-links a { padding:.6rem .5rem; }
+
+  .today-date { display:block; margin-top:.15rem; }
 
   button, input:not([type=hidden]):not([type=checkbox]):not([type=radio]), select, textarea {
     min-height:2.5rem; font-size:16px;

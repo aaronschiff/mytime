@@ -1,3 +1,5 @@
+from datetime import timedelta
+
 from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy.orm import Session
@@ -28,8 +30,12 @@ def _context(session: Session) -> dict:
             "base": e.seconds,
             "since_iso": e.running_since.isoformat() + "Z" if e.running_since else "",
         })
+    week_total = sum(
+        timers.live_elapsed(e, at)
+        for e in te.list_entries(session, date_from=day - timedelta(days=6), date_to=day)
+    )
     return {
-        "day": day, "rows": rows, "total_seconds": total,
+        "day": day, "rows": rows, "total_seconds": total, "week_seconds": week_total,
         "all_projects": ps, "task_types": ts,
         "names": {p.id: p.name for p in projects.list_projects(session)},
         "task_names": {t.id: t.name for t in task_types.list_task_types(session, include_inactive=True)},
