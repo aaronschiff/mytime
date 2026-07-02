@@ -14,7 +14,7 @@
   {% for e in entries %}
     <tr class="{{ 'locked' if e.invoice_id }}">
       <td class="nowrap tabnum">{{ e.entry_date | date }}</td><td>{{ task_names[e.task_type_id] }}</td>
-      <td class="tabnum">{{ e.seconds | hm }}</td><td>{{ (e.notes or "") | truncate_words }}</td>
+      <td class="tabnum">{{ e.seconds | hm }}</td><td class="notes">{{ (e.notes or "") | truncate_words }}</td>
     </tr>
   {% endfor %}
   </tbody>
