@@ -134,10 +134,17 @@ async def create(project_id: int, request: Request, session: Session = Depends(g
 
     cutoff_date = date.fromisoformat(form["cutoff"])
     task_ids = [int(v) for v in form.getlist("task_id")]
-    seconds_by_task = {
-        tid: parse_duration(str(form.get(f"duration_{tid}", "00:00"))) or 0
-        for tid in task_ids
-    }
+    seconds_by_task = {}
+    for tid in task_ids:
+        raw = str(form.get(f"duration_{tid}", "00:00"))
+        seconds = parse_duration(raw)
+        if seconds is None:
+            return templates.TemplateResponse(request, "invoice_build.html", _hourly_context(
+                session, project, cutoff_date, next_invoice_number=invoice_number or "",
+                error=f"Couldn't read the duration {raw!r}. "
+                      "Use hh:mm (minutes 00–59) or a whole number of hours.",
+            ), status_code=400)
+        seconds_by_task[tid] = seconds
     if invoice_number and _number_taken(session, invoice_number):
         return templates.TemplateResponse(request, "invoice_build.html", _hourly_context(
             session, project, cutoff_date, next_invoice_number=invoice_number,

@@ -26,6 +26,21 @@ def test_build_create_view_void(client):
     assert "Analysis" in client.get("/projects/1/invoices/new?cutoff=2026-06-30").text
 
 
+def test_hourly_invoice_rejects_bad_duration(client):
+    from mytime.models import Invoice, TimeEntry
+    _setup(client)
+    r = client.post("/projects/1/invoices/new",
+                    data={"cutoff": "2026-06-30", "task_id": "1", "duration_1": "2:99"},
+                    follow_redirects=False)
+    assert r.status_code == 400
+    assert "duration" in r.text.lower()
+    for dep in client.app.dependency_overrides.values():
+        gen = dep(); s = next(gen)
+        assert s.query(Invoice).count() == 0  # no invoice created
+        assert s.query(TimeEntry).filter(TimeEntry.invoice_id.is_not(None)).count() == 0  # entry not locked
+        break
+
+
 def _fixed_setup(client):
     client.post("/projects/new", data={"client_name": "Acme", "name": "Fixed",
                 "hourly_rate": "200", "budget": "45000", "description": "",
