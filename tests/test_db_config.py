@@ -43,3 +43,34 @@ def test_apply_migration_reraises_real_errors(tmp_path):
     with engine.connect() as conn:
         with pytest.raises(OperationalError):
             db._apply_migration(conn, "ALTER TABLE does_not_exist ADD COLUMN y INTEGER")
+
+
+def test_repair_client_ids_fixes_orphaned_reference(tmp_path):
+    """A project whose client_id points at a client row that no longer exists
+    (e.g. from before this fix shipped) must be repaired by re-linking to a
+    client with the matching client_name, not left dangling."""
+    from sqlalchemy.orm import sessionmaker
+    from mytime.models import Base, Client, Project
+
+    engine = create_engine(f"sqlite:///{tmp_path / 'orphan.db'}")
+    Base.metadata.create_all(engine)
+    Session = sessionmaker(bind=engine)
+    with Session() as session:
+        project = Project(
+            client_name="Acme", name="Website", hourly_rate=1,
+            status="active", billing_type="hourly",
+        )
+        session.add(project)
+        session.commit()
+        # Simulate a pre-existing orphan: client_id pointing at a row that
+        # doesn't exist (this can't be produced via the ORM anymore now that
+        # can_delete_client blocks it — it models data from before that fix).
+        session.execute(text("UPDATE project SET client_id = 999 WHERE id = :id"), {"id": project.id})
+        session.commit()
+
+        db._repair_client_ids(session)
+
+        project = session.execute(text("SELECT client_id FROM project WHERE name='Website'")).scalar()
+        client = session.execute(text("SELECT id, name FROM client WHERE name='Acme'")).first()
+        assert client is not None
+        assert project == client.id

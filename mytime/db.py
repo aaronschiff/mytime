@@ -45,13 +45,21 @@ _MIGRATIONS = [
 ]
 
 
-def _populate_client_ids(session) -> None:
-    """Populate client_id on projects that don't have one yet."""
+def _repair_client_ids(session) -> None:
+    """Link every project to a valid Client row.
+
+    Handles two cases: client_id is NULL (pre-Client-feature data), and
+    client_id points at a client row that no longer exists (an orphan from
+    a delete path that didn't check for linked projects — see BACKLOG).
+    Both are repaired by looking up or creating a Client matching the
+    project's client_name text field, which is always kept in sync.
+    """
     from sqlalchemy import select
-    projects = session.scalars(
-        select(Project).where(Project.client_id.is_(None))
-    ).all()
-    for project in projects:
+    valid_ids = set(session.scalars(select(Client.id)).all())
+    all_projects = session.scalars(select(Project)).all()
+    for project in all_projects:
+        if project.client_id in valid_ids:
+            continue
         if not project.client_name:
             continue
         client = session.scalars(
@@ -61,6 +69,7 @@ def _populate_client_ids(session) -> None:
             client = Client(name=project.client_name)
             session.add(client)
             session.flush()
+            valid_ids.add(client.id)
         project.client_id = client.id
     session.commit()
 
@@ -88,7 +97,7 @@ def init_db() -> None:
         for stmt in _MIGRATIONS:
             _apply_migration(conn, stmt)
     with SessionLocal() as session:
-        _populate_client_ids(session)
+        _repair_client_ids(session)
 
 
 def get_session() -> Iterator[Session]:
