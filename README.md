@@ -85,7 +85,7 @@ sudo systemctl daemon-reload
 sudo systemctl enable --now mytime
 ```
 
-The app binds to all interfaces on port 8000 by default. No authentication layer — intended for trusted LAN use only. Restrict access with a firewall if needed (e.g. `ufw allow from 192.168.0.0/16 to any port 8000`).
+The app binds to all interfaces on port 8000 by default. No authentication layer — intended for trusted LAN use only. Restrict access with a firewall if needed (e.g. `ufw allow from 192.168.0.0/16 to any port 8000`). Served over plain HTTP (no TLS) — browsers show a "Not Secure" indicator; this is a deliberate tradeoff for a LAN-only single-user app (getting a trusted cert for a `.local` hostname isn't practical without extra infra like Tailscale or a reverse proxy + local CA), not an oversight.
 
 ### Backups
 
@@ -95,6 +95,17 @@ The app binds to all interfaces on port 8000 by default. No authentication layer
 - `MYTIME_OFFSITE_DEST` — optional `user@host:/path` for an off-site rsync-over-SSH copy (key-based, non-interactive). Accumulates history independently of local pruning; an off-site failure is loud but never discards the verified local backup.
 
 The systemd unit **must** set the env vars explicitly — relying on defaults is how a misconfigured unit can silently back up the wrong path.
+
+## Installable app (Dock / Home Screen)
+
+The app is installable as a chrome-less app icon via `mytime/static/manifest.json` and the `<link rel="manifest">` / `apple-touch-icon` / `apple-mobile-web-app-*` tags in `base.html`. No service worker — the app requires the LAN server, so offline caching would add complexity for no benefit; this is manifest + icons only, giving standalone (no address bar) launch.
+
+- **iOS:** Safari → Share → "Add to Home Screen"
+- **macOS:** Safari → File → "Add to Dock"
+- Point at the production URL (`http://bbbee.local:8000/today`) — installing from `localhost:8001` would tie the icon to the dev instance.
+- Icons live in `mytime/static/icons/` (180/192/512px + 32px favicon), generated from an ImageMagick MVG source (not committed — regenerate by hand if the design changes) as a blue rounded-square/clock/green-dot mark matching the app's own `--accent`/`--run` colors.
+- **Gotcha:** apple-touch-icon PNGs must be fully opaque with **no alpha channel** — if the PNG has any transparency (e.g. from rounded corners baked into the image), iOS/macOS silently reject it and fall back to a generic grey placeholder icon instead of erroring. Generate icons as plain full-bleed squares (`-alpha off -depth 8`); let iOS/macOS apply their own corner rounding.
+- Safari caches touch icons aggressively — after changing icon files, remove the existing Dock/Home Screen icon and re-add it to pick up changes.
 
 ## Architecture
 
@@ -179,6 +190,8 @@ mytime/
     app.css         # All styles
     timer-tick.js   # Runs every second; updates .elapsed spans and total; fmtHms → HH:MM
     htmx.min.js
+    manifest.json   # Web app manifest for installable Dock/Home Screen icon
+    icons/          # apple-touch-icon.png, icon-192.png, icon-512.png, favicon.png
 tests/
   conftest.py       # In-memory SQLite fixture + TestClient with session override
   test_*.py         # 53 tests, all passing
