@@ -24,12 +24,18 @@ def test_edit_locked_entry_returns_403(client):
         "entry_date": "2026-06-25", "duration": "1:00", "notes": ""},
         follow_redirects=False)
     # Manually lock the entry via the DB session
+    from datetime import date
+    from decimal import Decimal
     from mytime.main import app
     from mytime.db import get_session
     with next(app.dependency_overrides[get_session]()) as s:
-        from mytime.models import TimeEntry
+        from mytime.models import Invoice, TimeEntry
         e = s.get(TimeEntry, 1)
-        e.invoice_id = 999
+        invoice = Invoice(project_id=e.project_id, cutoff_date=date(2026, 6, 25),
+                          rate_snapshot=Decimal("1"), total_amount=Decimal("1"))
+        s.add(invoice)
+        s.flush()
+        e.invoice_id = invoice.id
         s.commit()
     assert client.get("/time/1/edit").status_code == 403
     r = client.post("/time/1/edit", data={"project_id": "1", "task_type_id": "1",

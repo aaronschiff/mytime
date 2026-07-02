@@ -45,6 +45,49 @@ def test_apply_migration_reraises_real_errors(tmp_path):
             db._apply_migration(conn, "ALTER TABLE does_not_exist ADD COLUMN y INTEGER")
 
 
+def test_configure_engine_sets_foreign_keys_on(tmp_path):
+    engine = create_engine(f"sqlite:///{tmp_path / 'cfg.db'}")
+    db.configure_engine(engine)
+    with engine.connect() as conn:
+        assert conn.execute(text("PRAGMA foreign_keys")).scalar() == 1
+
+
+def test_foreign_keys_applies_to_every_new_connection(tmp_path):
+    engine = create_engine(f"sqlite:///{tmp_path / 'cfg.db'}")
+    db.configure_engine(engine)
+    for _ in range(3):
+        with engine.connect() as conn:
+            assert conn.execute(text("PRAGMA foreign_keys")).scalar() == 1
+
+
+def test_foreign_keys_block_orphaning_delete(tmp_path):
+    """With enforcement on, deleting a client that a project still references
+    must raise at the DB layer even if application code forgot to guard it —
+    this is the safety net behind the can_delete_client check."""
+    from sqlalchemy.exc import IntegrityError
+    from sqlalchemy.orm import sessionmaker
+    from mytime.models import Base, Client, Project
+    from decimal import Decimal
+
+    engine = create_engine(f"sqlite:///{tmp_path / 'fk.db'}")
+    db.configure_engine(engine)
+    Base.metadata.create_all(engine)
+    Session = sessionmaker(bind=engine)
+    with Session() as session:
+        client = Client(name="Acme")
+        session.add(client)
+        session.flush()
+        session.add(Project(
+            client_name="Acme", name="Website", hourly_rate=Decimal("1"),
+            status="active", billing_type="hourly", client_id=client.id,
+        ))
+        session.commit()
+
+        session.delete(client)
+        with pytest.raises(IntegrityError):
+            session.commit()
+
+
 def test_repair_client_ids_fixes_orphaned_reference(tmp_path):
     """A project whose client_id points at a client row that no longer exists
     (e.g. from before this fix shipped) must be repaired by re-linking to a

@@ -4,15 +4,18 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
+from mytime.db import configure_engine
 from mytime.models import Base
 
 
 def _make_engine():
-    return create_engine(
+    engine = create_engine(
         "sqlite://",
         connect_args={"check_same_thread": False},
         poolclass=StaticPool,
     )
+    configure_engine(engine)
+    return engine
 
 
 @pytest.fixture

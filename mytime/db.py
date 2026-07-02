@@ -18,12 +18,19 @@ def configure_engine(engine) -> None:
       crash-resilient than the default rollback journal. WAL is persisted in the
       database header, so setting it repeatedly is a harmless no-op. (Safe now
       that backups use the SQLite online-backup API rather than a file copy.)
+    - foreign_keys: OFF by default in SQLite, and (like busy_timeout) scoped
+      to the connection rather than persisted — must be set on every connect.
+      Every delete path that could orphan a FK has been audited and fixed
+      (see BACKLOG / docs/superpowers/plans/2026-07-02-fk-enforcement.md);
+      this is the enforcement layer plus a safety net for anything future
+      code forgets to guard.
     """
     @event.listens_for(engine, "connect")
     def _set_sqlite_pragmas(dbapi_conn, _conn_record):
         cur = dbapi_conn.cursor()
         cur.execute("PRAGMA busy_timeout=5000")
         cur.execute("PRAGMA journal_mode=WAL")
+        cur.execute("PRAGMA foreign_keys=ON")
         cur.close()
 
 

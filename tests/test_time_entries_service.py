@@ -1,6 +1,7 @@
 import pytest
 from decimal import Decimal
 from datetime import date
+from mytime.models import Invoice
 from mytime.services import time_entries as te, projects, task_types, guards
 
 
@@ -30,7 +31,11 @@ def test_update_and_delete(session):
 def test_locked_entry_rejects_edit_and_delete(session):
     p, t = _setup(session)
     e = te.create_entry(session, p.id, t.id, date(2026, 6, 25), 3600, None)
-    e.invoice_id = 1
+    invoice = Invoice(project_id=p.id, cutoff_date=date(2026, 6, 25),
+                      rate_snapshot=Decimal("1"), total_amount=Decimal("1"))
+    session.add(invoice)
+    session.flush()
+    e.invoice_id = invoice.id
     session.commit()
     with pytest.raises(guards.EntryLockedError):
         te.update_entry(session, e.id, p.id, t.id, date(2026, 6, 25), 10, None)
