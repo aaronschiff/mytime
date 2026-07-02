@@ -22,7 +22,10 @@
   </form>
 </div>
 <h2 style="margin:2rem 0 .5rem">Today's time entries:</h2>
-<div id="timers">{% include "_today_body.html" %}</div>
+<div id="timers"
+     hx-get="/today/body"
+     hx-trigger="every 5s, refresh-timers from:body"
+     hx-swap="innerHTML">{% include "_today_body.html" %}</div>
 <p class="muted kbd-hint" style="font-size:.85rem;margin:2rem 0 .25rem">Shortcuts: <kbd>s</kbd> stop/start running timer · <kbd>n</kbd> focus new entry form</p>
 {% endblock %}
 {% block scripts %}
@@ -133,6 +136,32 @@
       submitElapsedEdit(inp);
     }
   }, true);
+
+  // --- Cross-device sync ---------------------------------------------------
+  // The #timers div polls /today/body every 5s and on tab focus. Skip a
+  // background refresh while an inline elapsed-edit is open so the swap can't
+  // clobber a half-typed value. User actions (start/stop/delete/set-time) are
+  // issued by <form> elements, not by #timers, so they are never cancelled.
+  function isElapsedEditOpen() {
+    var forms = document.querySelectorAll('.elapsed-edit-form');
+    for (var i = 0; i < forms.length; i++) {
+      if (forms[i].style.display === 'inline') return true;
+    }
+    return false;
+  }
+  document.body.addEventListener('htmx:beforeRequest', function(evt) {
+    if (evt.target && evt.target.id === 'timers' && isElapsedEditOpen()) {
+      evt.preventDefault();  // skip this refresh; the next 5s tick retries
+    }
+  });
+
+  // Refresh immediately when returning to the tab/app (e.g. picking up the
+  // other device), so you don't wait up to 5s for the poll.
+  document.addEventListener('visibilitychange', function() {
+    if (document.visibilityState === 'visible' && window.htmx) {
+      htmx.trigger(document.body, 'refresh-timers');
+    }
+  });
 })();
 </script>
 {% endblock %}
