@@ -1,9 +1,11 @@
 :root { --accent:#2563eb; --bg:#f8fafc; --line:#e2e8f0; --run:#16a34a; }
 * { box-sizing: border-box; }
 body { font-family: system-ui, sans-serif; margin:0; background:var(--bg); color:#0f172a; }
-.topnav { display:flex; gap:1.25rem; padding:.75rem 1.5rem; background:#fff; border-bottom:1px solid var(--line); }
+.topnav { display:flex; padding:.75rem 1.5rem; background:#fff; border-bottom:1px solid var(--line); }
 .topnav a { text-decoration:none; color:#334155; font-weight:600; }
 .topnav a:hover { color:var(--accent); }
+.nav-toggle, .nav-toggle-btn, .back-btn { display:none; }
+.nav-links { display:flex; gap:1.25rem; }
 main { padding:1.5rem 2rem; max-width:1100px; margin:0 auto; }
 h1 { margin:0 0 1rem; }
 h2 { font-size:1.1rem; }
@@ -37,6 +39,10 @@ button.btn-save { background:var(--accent); color:#fff; border:1px solid var(--a
 button.btn-save:hover { background:#1d4ed8; border-color:#1d4ed8; }
 button.btn-cancel { color:#475569; }
 .swatch-over { background:#dc2626; }
+.budget-legend .leg-item:not(:first-child)::before { content:" · "; }
+.new-invoice-form { display:inline; margin-left:.5rem; }
+.billing-radio { margin-right:1rem; }
+.date-filters { margin-left:1rem; }
 #error-toast { position:fixed; bottom:1.5rem; left:50%; transform:translateX(-50%) translateY(calc(100% + 2rem)); transition:transform .2s ease; background:#dc2626; color:#fff; padding:.6rem 1.2rem; border-radius:6px; font-weight:600; z-index:999; white-space:nowrap; box-shadow:0 2px 8px rgba(0,0,0,.25); pointer-events:none; }
 #error-toast.show { transform:translateX(-50%) translateY(0); }
 .nowrap { white-space:nowrap; }
@@ -53,3 +59,68 @@ button.current { background:#334155; color:#fff; border-color:#334155; }
 #add-form select[name="project_id"] { flex:2 1 0; min-width:0; }
 #add-form select[name="task_type_id"] { flex:1 1 0; min-width:0; }
 #add-form input[name="notes"] { flex:1 1 0; min-width:0; }
+.table-scroll { overflow-x:auto; }
+
+@media (max-width: 600px) {
+  main { padding:1rem; }
+
+  .topnav { flex-wrap:wrap; padding:.6rem 1rem; align-items:center; }
+  .nav-toggle-btn, .back-btn {
+    display:flex; align-items:center; justify-content:center;
+    cursor:pointer; font-size:1.5rem; line-height:1;
+    width:2.5rem; height:2.5rem; padding:0;
+    background:none; border:none; color:#334155;
+  }
+  .nav-toggle-btn { margin-left:auto; }
+  .nav-links { display:none; flex-basis:100%; flex-direction:column; gap:.25rem; margin-top:.5rem; }
+  #nav-toggle:checked ~ .nav-links { display:flex; }
+  .nav-links a { padding:.6rem .25rem; }
+
+  button, input:not([type=hidden]):not([type=checkbox]):not([type=radio]), select, textarea {
+    min-height:2.5rem; font-size:16px;
+  }
+  button { padding-top:.4rem; padding-bottom:.4rem; }
+  select {
+    -webkit-appearance:none; appearance:none;
+    background-image:url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="10" height="6"><path d="M0 0l5 6 5-6z" fill="%2364748b"/></svg>');
+    background-repeat:no-repeat; background-position:right .6rem center; padding-right:1.8rem;
+  }
+
+  input:not([type=hidden]):not([type=checkbox]):not([type=radio]), select, textarea { max-width:100%; }
+
+  .kbd-hint { display:none; }
+
+  table.responsive thead { position:absolute; left:-9999px; }
+  table.responsive, table.responsive tbody, table.responsive tr, table.responsive td { display:block; width:100%; }
+  table.responsive tr {
+    border:1px solid var(--line); border-radius:8px; margin:0 0 .6rem; padding:.3rem .1rem; background:#fff;
+  }
+  table.responsive td {
+    border:none; padding:.35rem .6rem; text-align:left !important; white-space:normal !important; display:flex; gap:.75rem;
+  }
+  table.responsive td::before {
+    content: attr(data-label); font-weight:600; color:#64748b; flex:0 0 40%;
+  }
+  table.responsive td[data-label=""]::before,
+  table.responsive td.actions::before { content:none; }
+  table.responsive td.actions { flex-wrap:wrap; gap:.4rem; padding-top:.5rem; }
+
+  #add-form { flex-direction:column; align-items:stretch; }
+  #add-form select, #add-form input { width:100%; }
+
+  .new-invoice-form { display:block; margin:.75rem 0; }
+
+  .billing-radio { display:block; margin:.4rem 0; }
+
+  .date-filters { display:block; margin-top:.75rem; margin-left:0; }
+
+  .time-filter-form { display:flex; align-items:center; gap:.5rem; margin-bottom:1rem; }
+  .time-filter-form label { display:flex; align-items:center; gap:.4rem; flex:1; min-width:0; }
+  .time-filter-form select[name="project_id"] { flex:1; min-width:0; max-width:none; }
+
+  .rename-form { min-width:0; }
+  .rename-form input { width:100%; }
+
+  .budget-legend { display:flex; flex-direction:column; gap:.2rem; }
+  .budget-legend .leg-item:not(:first-child)::before { content:none; }
+}

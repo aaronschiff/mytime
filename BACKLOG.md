@@ -12,7 +12,6 @@ These surfaced during the 2026-06-30/07-01 failure-point audit (see WORKLOG). Th
 
 ## Dev-experience / test hygiene
 
-- **Static asset cache-busting.** `app.css` and JS are linked as bare `/static/...` with no version query, so CSS/JS changes silently show stale until a hard refresh — caused confusion twice on 2026-07-02. Add a cache-buster (e.g. `app.css?v=<mtime|hash>`) in `base.html`.
 - **Flaky date-dependent test.** `test_time_routes.py::test_create_entry_and_list` hard-codes a 2026-06-25 entry and relies on the real `today()`, so it fails once the real date is >7 days later (default filter window). Freeze the clock in the test (inject `today()`), don't rely on wall-clock date.
 
 ## Deferred features for future work

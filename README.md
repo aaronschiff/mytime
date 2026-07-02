@@ -241,6 +241,10 @@ The today view wraps the timer list in `<div id="timers">`. Start/stop/set-time/
 | `tabnum` | Tabular figures (`font-variant-numeric: tabular-nums`) for dates, times, money in prose |
 | `num` | Tabular figures + `text-align: right` for money columns in tables |
 | `current` (on `button`) | Dark filled state for active filter buttons (e.g. Active/Archived) |
+| `responsive` (on `table`) | Opts a table into the phone layout: below 600px, rows become labelled cards using each `<td>`'s `data-label` attribute instead of a header row |
+| `actions` (on `td`) | Marks a table's trailing button-cell so the phone card layout omits its (non-existent) label and lets buttons wrap |
+| `table-scroll` (on wrapper `div`) | `overflow-x: auto` escape hatch for the two tables left un-stacked (`invoice_view.html`, `invoice_build.html` line items) if they overflow at phone width |
+| `nav-links` / `nav-toggle` / `nav-toggle-btn` | Hamburger nav below 600px: CSS-only checkbox-toggle (`#nav-toggle:checked ~ .nav-links`), no JS. Desktop/tablet always shows `.nav-links` inline and hides the toggle |
 
 ## Features
 
@@ -254,6 +258,15 @@ The today view wraps the timer list in `<div id="timers">`. Start/stop/set-time/
 - **Overview:** Project cards with budget bar; over-budget in red with exceedance; remaining shown with percentage
 - **Clients:** List with project count and total invoiced; detail with Archive/Delete per project; rename propagates to all linked projects; projects sorted active-first then reverse-chronological; date-started column
 - **Settings:** Default hourly rate, currency symbol, default GST rate, task type management
+
+## Responsive phone layout
+
+A single `@media (max-width: 600px)` block in `app.css` reflows the app for phone widths (tested down to an iPhone 13 mini, ~375px CSS width); everything at 600px+ is byte-for-byte the pre-existing desktop/tablet layout. No JS added.
+
+- **Nav:** collapses to a `☰` button behind a CSS-only checkbox toggle (see `nav-links`/`nav-toggle` in the class table above). Navigating away reloads the page, which resets the checkbox, so the menu always closes on link tap.
+- **Tables:** any table with `class="responsive"` restacks each row into a labelled card (`<td data-label="…">` supplies the label via a `::before` pseudo-element instead of the hidden `<thead>`). Applied to the main data tables (projects, clients, time entries, invoices list, task types, today's timers). The two narrower totals/build tables (`invoice_view.html`, `invoice_build.html`) keep their normal tabular layout and are wrapped in `.table-scroll` instead, since stacking a 4-column money table reads worse than letting it scroll.
+- **Touch targets:** `button`/`input`/`select`/`textarea` get `min-height: 2.5rem` and `font-size: 16px` — the 16px is required, not cosmetic: iOS Safari auto-zooms the page on focus if an input's font-size is below 16px.
+- **Inputs:** capped to `max-width: 100%` so template-level inline `style="width:20em"` etc. can't force horizontal overflow.
 
 ## Key constraints
 

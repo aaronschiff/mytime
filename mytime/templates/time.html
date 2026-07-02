@@ -4,23 +4,25 @@
 <h1>Time entries</h1>
 <p>
   <form method="get" action="/time/new" style="display:inline"><input type="hidden" name="from_page" value="/time"><button>+ New entry</button></form>
-  <form method="get" action="/time" style="display:inline;margin-left:1rem">
-    <input type="hidden" name="project_id" value="{{ filter_project_id or '' }}">
-    <input type="hidden" name="date_filter" value="7d">
-    <button {% if date_filter == "7d" %}class="current"{% endif %}>Last 7 days</button>
-  </form>
-  <form method="get" action="/time" style="display:inline">
-    <input type="hidden" name="project_id" value="{{ filter_project_id or '' }}">
-    <input type="hidden" name="date_filter" value="30d">
-    <button {% if date_filter == "30d" %}class="current"{% endif %}>Last 30 days</button>
-  </form>
-  <form method="get" action="/time" style="display:inline">
-    <input type="hidden" name="project_id" value="{{ filter_project_id or '' }}">
-    <input type="hidden" name="date_filter" value="all">
-    <button {% if date_filter == "all" %}class="current"{% endif %}>All</button>
-  </form>
+  <span class="date-filters">
+    <form method="get" action="/time" style="display:inline">
+      <input type="hidden" name="project_id" value="{{ filter_project_id or '' }}">
+      <input type="hidden" name="date_filter" value="7d">
+      <button {% if date_filter == "7d" %}class="current"{% endif %}>Last 7 days</button>
+    </form>
+    <form method="get" action="/time" style="display:inline">
+      <input type="hidden" name="project_id" value="{{ filter_project_id or '' }}">
+      <input type="hidden" name="date_filter" value="30d">
+      <button {% if date_filter == "30d" %}class="current"{% endif %}>Last 30 days</button>
+    </form>
+    <form method="get" action="/time" style="display:inline">
+      <input type="hidden" name="project_id" value="{{ filter_project_id or '' }}">
+      <input type="hidden" name="date_filter" value="all">
+      <button {% if date_filter == "all" %}class="current"{% endif %}>All</button>
+    </form>
+  </span>
 </p>
-<form method="get" action="/time" class="muted">
+<form method="get" action="/time" class="muted time-filter-form">
   <input type="hidden" name="date_filter" value="{{ date_filter }}">
   <label>Project
     <select name="project_id">

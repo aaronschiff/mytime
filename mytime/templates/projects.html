@@ -16,19 +16,19 @@
     <button>+ New project</button>
   </form>
 </p>
-<table>
+<table class="responsive">
   <thead><tr><th>Client</th><th>Project</th><th class="num">Budget</th><th class="num">Invoiced</th><th class="num">Uninvoiced</th><th>Started</th><th></th></tr></thead>
   <tbody>
   {% for p in projects %}
     {% set s = summaries[p.id] %}
     <tr>
-      <td class="nowrap">{{ p.client_name }}</td>
-      <td><a href="/projects/{{ p.id }}">{{ p.name }}</a></td>
-      <td class="num">{{ p.budget | money(currency) if p.budget is not none else "—" }}</td>
-      <td class="num">{{ s.invoiced_value | money(currency) }}</td>
-      <td class="num">{{ s.uninvoiced_value | money(currency) }}</td>
-      <td class="nowrap tabnum">{{ p.created_at | date }}</td>
-      <td>
+      <td data-label="Client" class="nowrap">{{ p.client_name }}</td>
+      <td data-label="Project"><a href="/projects/{{ p.id }}">{{ p.name }}</a></td>
+      <td data-label="Budget" class="num">{{ p.budget | money(currency) if p.budget is not none else "—" }}</td>
+      <td data-label="Invoiced" class="num">{{ s.invoiced_value | money(currency) }}</td>
+      <td data-label="Uninvoiced" class="num">{{ s.uninvoiced_value | money(currency) }}</td>
+      <td data-label="Started" class="nowrap tabnum">{{ p.created_at | date }}</td>
+      <td class="actions">
         <form method="get" action="/projects/{{ p.id }}/edit" style="display:inline">
           <input type="hidden" name="from_page" value="/projects">
           <button>Edit</button>

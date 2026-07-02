@@ -1,6 +1,14 @@
+import os
+
 from fastapi.templating import Jinja2Templates
 
 templates = Jinja2Templates(directory="mytime/templates")
+
+STATIC_DIR = os.path.join(os.path.dirname(__file__), "static")
+
+
+def static_version(filename: str) -> int:
+    return int(os.path.getmtime(os.path.join(STATIC_DIR, filename)))
 
 
 def register_filters() -> None:
@@ -11,3 +19,4 @@ def register_filters() -> None:
     templates.env.filters["money_cents"] = fmt.money_cents
     templates.env.filters["truncate_words"] = fmt.truncate_words
     templates.env.filters["date"] = fmt.fmt_date
+    templates.env.globals["static_version"] = static_version

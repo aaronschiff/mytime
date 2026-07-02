@@ -1,14 +1,14 @@
-<table>
+<table class="responsive">
   <thead><tr><th>Date</th><th>Project</th><th>Task</th><th>Time</th><th>Notes</th><th></th></tr></thead>
   <tbody>
   {% for e in entries %}
     <tr class="{{ 'locked' if e.invoice_id }}">
-      <td class="nowrap tabnum">{{ e.entry_date | date }}</td>
-      <td>{{ names[e.project_id] }}</td>
-      <td>{{ task_names[e.task_type_id] }}</td>
-      <td class="tabnum">{{ e.seconds | hm }}</td>
-      <td>{{ (e.notes or "") | truncate_words }}</td>
-      <td>
+      <td data-label="Date" class="nowrap tabnum">{{ e.entry_date | date }}</td>
+      <td data-label="Project">{{ names[e.project_id] }}</td>
+      <td data-label="Task">{{ task_names[e.task_type_id] }}</td>
+      <td data-label="Time" class="tabnum">{{ e.seconds | hm }}</td>
+      <td data-label="Notes">{{ (e.notes or "") | truncate_words }}</td>
+      <td class="actions">
         {% if e.invoice_id %}<span class="muted">invoiced</span>
         {% elif project_statuses.get(e.project_id) == 'active' %}
           <form method="get" action="/time/{{ e.id }}/edit" style="display:inline">
