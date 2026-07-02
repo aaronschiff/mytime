@@ -49,6 +49,7 @@ class Project(Base):
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     hourly_rate: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=Decimal("0"))
     status: Mapped[str] = mapped_column(String(20), default="active")
+    billing_type: Mapped[str] = mapped_column(String(20), default="hourly")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=clock.now)
     client_id: Mapped[int | None] = mapped_column(ForeignKey("client.id"), nullable=True)
     gst_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
@@ -79,6 +80,7 @@ class Invoice(Base):
     total_amount: Mapped[Decimal] = mapped_column(Numeric(12, 2))
     invoice_number: Mapped[str | None] = mapped_column(String(50), nullable=True)
     gst_amount: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
+    label: Mapped[str | None] = mapped_column(String(200), nullable=True)
 
 
 class InvoiceLine(Base):

@@ -25,10 +25,11 @@
 <p><form method="get" action="/projects/{{ project.id }}/invoices/new" style="display:inline"><button>+ New invoice</button></form></p>
 {% endif %}
 <table>
-  <thead><tr><th>#</th><th>Date</th><th>Cut-off</th><th>Total</th></tr></thead>
+  <thead><tr><th>#</th><th>Label</th><th>Date</th><th>Cut-off</th><th class="num">Total</th></tr></thead>
   <tbody>
   {% for inv in invoices %}
     <tr><td><a href="/invoices/{{ inv.id }}">{{ inv.invoice_number or inv.id }}</a></td>
+        <td>{{ inv.label or '—' }}</td>
         <td class="nowrap tabnum">{{ inv.created_at | date }}</td><td class="nowrap tabnum">{{ inv.cutoff_date | date }}</td>
         <td class="tabnum">{{ inv.total_amount | money_cents(currency) }}</td></tr>
   {% endfor %}

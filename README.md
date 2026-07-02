@@ -122,12 +122,17 @@ The app is installable as a chrome-less app icon via `mytime/static/manifest.jso
 | `Client` | First-class client entity (name, unique) |
 | `Settings` | Global app defaults (bill rate, currency, default GST rate) |
 | `TaskType` | Categories (e.g. "Development", "Research") for grouping time |
-| `Project` | Billable projects with budget, bill rate, `client_id` FK, and optional GST |
+| `Project` | Billable projects with budget, bill rate, `client_id` FK, optional GST, and `billing_type` (`hourly`/`fixed`) |
 | `TimeEntry` | Individual time records (linked to project + task type) |
-| `Invoice` | Invoice headers (project, period, total, optional GST amount) |
-| `InvoiceLine` | Line items per task type (tracked vs invoiced seconds, amount) |
+| `Invoice` | Invoice headers (project, period, total, optional GST amount, optional `label`) |
+| `InvoiceLine` | Line items per task type (tracked vs invoiced seconds, amount) — **not created for fixed-fee invoices** |
 
 `Project` retains the `client_name` text field for display; `client_id` FK is additional metadata. When a client is renamed, all linked project `client_name` fields are updated.
+
+### Billing modes (`Project.billing_type`)
+
+- **`hourly`** (default): invoices are built from tracked time — amount = Σ(invoiced seconds × rate) grouped by task type; creating one **locks** the underlying `TimeEntry` rows. Budget bar shows *invoiced + uninvoiced-time value* vs budget.
+- **`fixed`**: for fixed-fee/milestone engagements (e.g. a $45k fee billed in three $15k increments). Invoices are **flat dollar amounts** entered directly (with an optional `label` like "Draft report"), unrelated to time — they create **no `InvoiceLine`s** and **never touch `TimeEntry` rows** (time stays editable). The budget bar instead shows **tracked-time value vs the fee** (an effort/burn measure), with "Invoiced $X of $budget" as text. `hourly_rate` is still used, to value tracked time. Fixed invoices store harmless values in the NOT-NULL `cutoff_date` (= invoice date) and `rate_snapshot` (= project rate); they are distinguished at render time by having no lines. Increments are **not** recorded on the project — you just issue each flat invoice when you reach the milestone.
 
 ### Timer mechanics
 
@@ -240,9 +245,10 @@ The today view wraps the timer list in `<div id="timers">`. Start/stop/set-time/
 ## Features
 
 - **Today page:** Live timer with start/stop; two-mode add (auto-start or save with time); click-to-edit elapsed time (HH:MM); keyboard shortcuts: `s` stop/start, `n` focus new-entry form. Layout: "Total today" below h1, "Create timer" card with form, "Today's time entries" table, shortcuts hint at bottom.
-- **Projects:** CRUD with budget tracking; archive/unarchive; guarded delete; GST toggle per project; client+project name uniqueness enforced; archived projects: Edit hidden, Unarchive shown; blocked from new time entries and invoices; projects list sorted reverse-chronological with date-started column
+- **Projects:** CRUD with budget tracking; archive/unarchive; guarded delete; GST toggle per project; **billing type (hourly / fixed fee)**; client+project name uniqueness enforced; archived projects: Edit hidden, Unarchive shown; blocked from new time entries and invoices; projects list sorted reverse-chronological with date-started column
 - **Time entries:** Log manual entries (hh:mm or plain hours); edit/delete guarded by invoice lock and project archived status; future-date confirmation; ≥10h entry confirmation; notes truncated to 3 words in all list views; date filter buttons (Last 7 days / Last 30 days / All, default 7d) with 30-entry pagination; pagination uses HTMX in-place swap (no full page reload)
-- **Invoicing:** Build per project, group by task type, live dollar amounts with cents; GST rows in table footer when enabled; auto-suggested numeric invoice numbers; void blocked for archived projects; invoice list in project detail shows cents
+- **Invoicing (hourly):** Build per project, group by task type, live dollar amounts with cents; GST rows in table footer when enabled; auto-suggested numeric invoice numbers; void blocked for archived projects; invoice list in project detail shows cents
+- **Invoicing (fixed fee):** Flat-amount form (amount + optional label + date + number) with live GST; rejects a missing/non-numeric amount with a 400; creates no lines and leaves tracked time untouched; invoice lists show the label column
 - **Invoice view:** Amount column right-aligned; all values show cents
 - **Invoice list:** `/invoices` — all invoices reverse-chronological
 - **Overview:** Project cards with budget bar; over-budget in red with exceedance; remaining shown with percentage

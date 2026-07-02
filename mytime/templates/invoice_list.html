@@ -8,9 +8,10 @@
     <tr>
       <th>Invoice #</th>
       <th>Project</th>
+      <th>Label</th>
       <th>Created</th>
       <th>Cut-off</th>
-      <th>Total</th>
+      <th class="num">Total</th>
     </tr>
   </thead>
   <tbody>
@@ -19,6 +20,7 @@
     <tr>
       <td><a href="/invoices/{{ inv.id }}">{{ inv.invoice_number or ('#' ~ inv.id) }}</a></td>
       <td>{% if proj %}<a href="/projects/{{ proj.id }}">{{ proj.client_name }} — {{ proj.name }}</a>{% else %}—{% endif %}</td>
+      <td>{{ inv.label or '—' }}</td>
       <td>{{ inv.created_at | date }}</td>
       <td>{{ inv.cutoff_date | date }}</td>
       <td>{{ inv.total_amount | money(currency) }}</td>

@@ -50,6 +50,7 @@ def create(
     client_name: str = Form(...), name: str = Form(...),
     hourly_rate: Decimal = Form(...), budget: str = Form(""), description: str = Form(""),
     gst_enabled: str = Form(""), gst_rate: str = Form(""),
+    billing_type: str = Form("hourly"),
     from_page: str = Form(""),
     session: Session = Depends(get_session),
 ):
@@ -58,6 +59,7 @@ def create(
             session, client_name, name, hourly_rate, budget, description,
             gst_enabled=bool(gst_enabled),
             gst_rate=gst_rate if gst_enabled else None,
+            billing_type=billing_type,
         )
     except ValueError as exc:
         settings = settings_service.get_settings(session)
@@ -94,6 +96,7 @@ def update(
     client_name: str = Form(...), name: str = Form(...),
     hourly_rate: Decimal = Form(...), budget: str = Form(""), description: str = Form(""),
     gst_enabled: str = Form(""), gst_rate: str = Form(""),
+    billing_type: str = Form("hourly"),
     from_page: str = Form(""),
     session: Session = Depends(get_session),
 ):
@@ -102,6 +105,7 @@ def update(
             session, project_id, client_name, name, hourly_rate, budget, description,
             gst_enabled=bool(gst_enabled),
             gst_rate=gst_rate if gst_enabled else None,
+            billing_type=billing_type,
         )
     except ValueError as exc:
         settings = settings_service.get_settings(session)

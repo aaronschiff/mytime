@@ -40,6 +40,8 @@ _MIGRATIONS = [
     "ALTER TABLE project ADD COLUMN gst_enabled BOOLEAN NOT NULL DEFAULT 0",
     "ALTER TABLE project ADD COLUMN gst_rate NUMERIC(5,2)",
     "ALTER TABLE invoice ADD COLUMN gst_amount NUMERIC(12,2)",
+    "ALTER TABLE project ADD COLUMN billing_type VARCHAR(20) NOT NULL DEFAULT 'hourly'",
+    "ALTER TABLE invoice ADD COLUMN label VARCHAR(200)",
 ]
 
 

@@ -1,3 +1,37 @@
+{% if s.project.billing_type == 'fixed' %}
+{% set trk = s.tracked_value | float %}
+{% if s.project.budget is not none %}
+  {% set scale = [s.project.budget | float, trk] | max %}
+  {% set trk_within = [trk, s.project.budget | float] | min %}
+  {% set trk_over = [trk - (s.project.budget | float), 0] | max %}
+{% else %}
+  {% set scale = [trk, 1] | max %}
+  {% set trk_within = trk %}
+  {% set trk_over = 0 %}
+{% endif %}
+<div class="bar-wrap">
+  <div class="bar">
+    <span class="seg seg-unv" style="width:{{ (trk_within / scale * 100) if scale else 0 }}%"></span>
+    {% if s.over_budget %}
+      <span class="seg seg-over" style="width:{{ (trk_over / scale * 100) if scale else 0 }}%"></span>
+    {% elif s.project.budget is not none %}
+      <span class="seg seg-rem" style="width:{{ (s.budget_remaining | float / scale * 100) if scale else 0 }}%"></span>
+    {% endif %}
+  </div>
+  {% if s.project.budget is not none %}
+    <div class="budget-line" style="left:{{ (s.project.budget | float / scale * 100) if scale else 0 }}%"></div>
+  {% endif %}
+</div>
+<p class="muted">
+  Fixed fee ·
+  Invoiced <span class="tabnum">{{ s.invoiced_value | money(currency) }}</span>{% if s.project.budget is not none %} of <span class="tabnum">{{ s.project.budget | money(currency) }}</span>{% endif %} ·
+  <span class="swatch swatch-unv"></span>tracked value <span class="tabnum">{{ s.tracked_value | money(currency) }}</span>
+  {% if s.project.budget is none %}(no budget)
+  {% elif s.over_budget %}· <span class="swatch swatch-over"></span><strong class="over-budget">over fee by <span class="tabnum">{{ s.exceedance | money(currency) }}</span></strong>
+  {% else %}{% if s.project.budget and s.project.budget > 0 %}(<span class="tabnum">{{ ((s.tracked_value | float) / (s.project.budget | float) * 100) | round | int }}%</span> of fee){% endif %}{% endif %}
+  · tracked <span class="tabnum">{{ s.total_tracked_seconds | hm }}</span>
+</p>
+{% else %}
 {% set inv = s.invoiced_value | float %}
 {% set unv = s.uninvoiced_value | float %}
 {% if s.project.budget is not none %}
@@ -33,3 +67,4 @@
   {% endif %}
   · tracked <span class="tabnum">{{ s.total_tracked_seconds | hm }}</span>
 </p>
+{% endif %}

@@ -53,3 +53,41 @@ def test_running_entries_excluded_from_preview(session):
     p, a, m = _setup(session)
     timers.add_timer(session, p.id, a.id, None, datetime(2026, 6, 25, 9, 0, 0))  # running
     assert invoicing.build_invoice_preview(session, p.id, date(2026, 6, 30)) == []
+
+
+def _fixed_setup(session):
+    p = projects.create_project(session, "C", "Fixed", Decimal("200"), Decimal("45000"),
+                                None, billing_type="fixed")
+    a = task_types.add_task_type(session, "Analysis")
+    return p, a
+
+
+def test_fixed_invoice_flat_amount_no_lines_and_leaves_time(session):
+    p, a = _fixed_setup(session)
+    e = te.create_entry(session, p.id, a.id, date(2026, 6, 20), 3600, None)
+    inv = invoicing.create_fixed_invoice(session, p.id, Decimal("15000"),
+                                         datetime(2026, 6, 30, 17, 0, 0), label="Inception")
+    assert inv.total_amount == Decimal("15000.00")
+    assert inv.label == "Inception"
+    assert invoicing.invoice_lines(session, inv.id) == []
+    # tracked time untouched — still editable, still counted as uninvoiced
+    assert te.get_entry(session, e.id).invoice_id is None
+
+
+def test_fixed_invoice_computes_gst(session):
+    p = projects.create_project(session, "C", "FixedGst", Decimal("200"), Decimal("45000"),
+                                None, gst_enabled=True, gst_rate=Decimal("15"),
+                                billing_type="fixed")
+    inv = invoicing.create_fixed_invoice(session, p.id, Decimal("15000"),
+                                         datetime(2026, 6, 30, 17, 0, 0))
+    assert inv.total_amount == Decimal("15000.00")
+    assert inv.gst_amount == Decimal("2250.00")
+
+
+def test_void_fixed_invoice(session):
+    p, a = _fixed_setup(session)
+    inv = invoicing.create_fixed_invoice(session, p.id, Decimal("15000"),
+                                         datetime(2026, 6, 30, 17, 0, 0))
+    invoicing.void_invoice(session, inv.id)
+    assert invoicing.get_invoice(session, inv.id) is None
+    assert invoicing.list_invoices(session, p.id) == []

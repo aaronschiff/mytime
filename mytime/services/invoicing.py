@@ -79,6 +79,35 @@ def create_invoice(
     return invoice
 
 
+def create_fixed_invoice(
+    session, project_id, amount, at: datetime,
+    invoice_number: str | None = None, label: str | None = None,
+    invoice_date: date | None = None,
+) -> Invoice:
+    """Create a flat-amount invoice for a fixed-fee project.
+
+    The amount is entered directly and unrelated to tracked time, so no
+    ``InvoiceLine`` rows are created and no ``TimeEntry`` is touched. ``cutoff_date``
+    and ``rate_snapshot`` are NOT NULL on the model, so we store harmless values
+    (the invoice date and the project's rate) rather than widen the schema.
+    """
+    project = session.get(Project, project_id)
+    total = _q(amount)
+    invoice = Invoice(
+        project_id=project_id,
+        cutoff_date=invoice_date or at.date(),
+        rate_snapshot=project.hourly_rate,
+        total_amount=total,
+        invoice_number=invoice_number,
+        label=label,
+    )
+    if project.gst_enabled and project.gst_rate:
+        invoice.gst_amount = _q(total * project.gst_rate / Decimal("100"))
+    session.add(invoice)
+    session.commit()
+    return invoice
+
+
 def void_invoice(session: Session, invoice_id: int) -> None:
     for e in session.scalars(select(TimeEntry).where(TimeEntry.invoice_id == invoice_id)):
         e.invoice_id = None

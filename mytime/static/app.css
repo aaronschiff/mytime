@@ -45,6 +45,7 @@ button.btn-cancel { color:#475569; }
 .elapsed { font-variant-numeric:tabular-nums; }
 [data-total-seconds] { font-variant-numeric:tabular-nums; }
 td:last-child { white-space:nowrap; text-align:right; padding-right:1rem; }
+th:last-child { padding-right:1rem; }
 td.notes:last-child { text-align:left; padding-right:.6rem; }
 form + form { margin-left:.5rem; }
 button.current { background:#334155; color:#fff; border-color:#334155; }

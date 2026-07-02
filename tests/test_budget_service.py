@@ -43,3 +43,29 @@ def test_summary_over_budget(session):
     assert s.over_budget is True
     assert s.exceedance == Decimal("50.00")
     assert s.budget_remaining == Decimal("-50.00")
+
+
+def test_fixed_summary_tracks_time_value_not_invoiced(session):
+    p = projects.create_project(session, "C", "Fixed", Decimal("200"), Decimal("45000"),
+                                None, billing_type="fixed")
+    # Invoiced amount is decoupled and must NOT drive budget progress
+    session.add(Invoice(project_id=p.id, cutoff_date=date(2026, 6, 25),
+                        rate_snapshot=Decimal("200"), total_amount=Decimal("15000")))
+    session.commit()
+    _entry(session, p.id, 3600 * 10)       # 10h @ 200 = 2000 tracked value
+    s = budget.project_summary(session, p)
+    assert s.invoiced_value == Decimal("15000.00")
+    assert s.tracked_value == Decimal("2000.00")
+    assert s.budget_remaining == Decimal("43000.00")   # 45000 - 2000 (not - invoiced)
+    assert s.over_budget is False
+
+
+def test_fixed_summary_over_fee_when_tracked_value_exceeds_budget(session):
+    p = projects.create_project(session, "C", "Fixed", Decimal("200"), Decimal("1000"),
+                                None, billing_type="fixed")
+    _entry(session, p.id, 3600 * 6)        # 6h @ 200 = 1200 > 1000 fee
+    s = budget.project_summary(session, p)
+    assert s.tracked_value == Decimal("1200.00")
+    assert s.over_budget is True
+    assert s.exceedance == Decimal("200.00")
+    assert s.budget_remaining == Decimal("-200.00")

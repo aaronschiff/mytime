@@ -15,7 +15,14 @@
     {% endif %}
   </label></p>
   <p><label>Project name<br><input name="name" required value="{{ project.name if project else '' }}" style="width:100%"></label></p>
-  <p><label>Hourly rate<br>
+  {% set current_billing = project.billing_type if project else 'hourly' %}
+  <p>Billing type<br>
+    <label style="margin-right:1rem"><input type="radio" name="billing_type" value="hourly"
+      {{ 'checked' if current_billing != 'fixed' }}> Hourly (invoice tracked time)</label>
+    <label><input type="radio" name="billing_type" value="fixed"
+      {{ 'checked' if current_billing == 'fixed' }}> Fixed fee (invoice flat amounts)</label>
+  </p>
+  <p><label>{% if current_billing == 'fixed' %}Rate (for valuing tracked time){% else %}Hourly rate{% endif %}<br>
     <span>{{ currency }}</span><input type="number" step="1" name="hourly_rate"
        value="{{ (project.hourly_rate | float) | round | int if project else (default_rate | float) | round | int }}"
        style="width:8em"></label></p>

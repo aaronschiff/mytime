@@ -28,8 +28,13 @@ def _check_duplicate(session: Session, client_name: str, name: str, exclude_id: 
         raise ValueError(f"A project named \"{name}\" already exists for client \"{client_name}\".")
 
 
+def _normalize_billing_type(billing_type: str | None) -> str:
+    return "fixed" if billing_type == "fixed" else "hourly"
+
+
 def create_project(session, client_name, name, hourly_rate, budget, description,
-                   gst_enabled: bool = False, gst_rate=None) -> Project:
+                   gst_enabled: bool = False, gst_rate=None,
+                   billing_type: str = "hourly") -> Project:
     from mytime.services.clients import find_or_create as _find_or_create_client
     stripped = client_name.strip()
     _check_duplicate(session, stripped, name.strip())
@@ -41,6 +46,7 @@ def create_project(session, client_name, name, hourly_rate, budget, description,
         budget=Decimal(budget) if budget not in (None, "") else None,
         description=(description or None),
         status="active",
+        billing_type=_normalize_billing_type(billing_type),
         client_id=client.id if client is not None else None,
         gst_enabled=gst_enabled,
         gst_rate=Decimal(gst_rate) if gst_rate not in (None, "") else None,
@@ -51,7 +57,8 @@ def create_project(session, client_name, name, hourly_rate, budget, description,
 
 
 def update_project(session, project_id, client_name, name, hourly_rate, budget, description,
-                   gst_enabled: bool = False, gst_rate=None) -> Project:
+                   gst_enabled: bool = False, gst_rate=None,
+                   billing_type: str = "hourly") -> Project:
     from mytime.services.clients import find_or_create as _find_or_create_client
     p = get_project(session, project_id)
     stripped = client_name.strip()
@@ -62,6 +69,7 @@ def update_project(session, project_id, client_name, name, hourly_rate, budget, 
     p.hourly_rate = Decimal(hourly_rate)
     p.budget = Decimal(budget) if budget not in (None, "") else None
     p.description = description or None
+    p.billing_type = _normalize_billing_type(billing_type)
     p.client_id = client.id if client is not None else None
     p.gst_enabled = gst_enabled
     p.gst_rate = Decimal(gst_rate) if gst_rate not in (None, "") else None

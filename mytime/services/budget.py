@@ -17,6 +17,7 @@ class ProjectSummary:
     uninvoiced_value: Decimal
     uninvoiced_seconds: int
     total_tracked_seconds: int
+    tracked_value: Decimal
     budget_remaining: Decimal | None
     over_budget: bool
     exceedance: Decimal
@@ -35,17 +36,23 @@ def project_summary(session: Session, project: Project) -> ProjectSummary:
     )
     invoiced_value = _q(invoiced)
     uninvoiced_value = _q(Decimal(uninvoiced_secs) / Decimal(3600) * project.hourly_rate)
+    tracked_value = _q(Decimal(total_secs) / Decimal(3600) * project.hourly_rate)
 
+    # Progress metric differs by billing mode: fixed-fee projects measure total
+    # tracked-time value against the fee (effort/burn); hourly projects measure
+    # money committed (invoiced + value of uninvoiced time).
+    committed = tracked_value if project.billing_type == "fixed" else invoiced_value + uninvoiced_value
     remaining = None
     over = False
     exceedance = Decimal("0.00")
     if project.budget is not None:
-        remaining = _q(project.budget - invoiced_value - uninvoiced_value)
+        remaining = _q(project.budget - committed)
         if remaining < 0:
             over = True
             exceedance = _q(-remaining)
     return ProjectSummary(
         project=project, invoiced_value=invoiced_value, uninvoiced_value=uninvoiced_value,
         uninvoiced_seconds=int(uninvoiced_secs), total_tracked_seconds=int(total_secs),
+        tracked_value=tracked_value,
         budget_remaining=remaining, over_budget=over, exceedance=exceedance,
     )
