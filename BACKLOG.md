@@ -1,11 +1,5 @@
 # Backlog
 
-## Data-integrity / reliability
-
-These surfaced during the 2026-06-30/07-01 failure-point audit (see WORKLOG). The five top data-loss risks were fixed; these are the lower-priority remainders.
-
-- **FK enforcement off.** SQLite runs with `foreign_keys=OFF`, so orphaned references are possible — e.g. `delete_client` removes a client while projects still hold its `client_id`. Enabling `PRAGMA foreign_keys=ON` needs an audit of every delete path plus a one-off cleanup of any existing orphans, with tests, before flipping it on. Data-integrity gap, not a direct time-loss risk.
-
 ## Deferred features for future work
 
 - **Auth & HTTPS:** If app is ever exposed beyond trusted LAN, add authentication (basic auth or OIDC) and enforce HTTPS. Revisited 2026-07-02 (installed Dock app shows "Not Secure" in the title bar) — user decided against it for now: no easy way to get a trusted cert for a `.local` LAN hostname without extra infra (Tailscale cert, own domain + DNS-01 + reverse proxy, or self-signed + manual per-device trust). Reconsider if Tailscale gets adopted for this LAN.
