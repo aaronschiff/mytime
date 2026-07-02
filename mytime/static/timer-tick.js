@@ -43,7 +43,10 @@ function _checkNotification(sinceIso, now) {
 
 setInterval(tick, 1000);
 document.body.addEventListener("htmx:afterSwap", function() {
-  _notifiedSince = null;  // reset after HTMX swap so we re-check
+  // Re-render immediately after a swap. Do NOT reset _notifiedSince here:
+  // _checkNotification already dedupes on the timer's `since`, and a new
+  // timer has a new `since`, so a background poll (every 5s) can't make the
+  // ">4h still running" notification re-fire.
   tick();
 });
 tick();
