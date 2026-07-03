@@ -106,3 +106,24 @@ def stop_entry(entry_id: int, session: Session = Depends(get_session)):
     except EntryLockedError:
         return _error(403, "This time entry is locked to an invoice.")
     return _today_state(session)
+
+
+class SetTimeBody(BaseModel):
+    time_hm: str
+
+
+@router.post("/api/today/{entry_id}/set-time")
+def set_time_entry(entry_id: int, body: SetTimeBody, session: Session = Depends(get_session)):
+    entry = te.get_entry(session, entry_id)
+    if entry is None:
+        return _error(404, "Time entry not found.")
+    if entry.invoice_id is not None:
+        return _error(403, "This time entry is locked to an invoice.")
+    if entry.running_since is not None:
+        return _error(403, "Stop the timer before editing elapsed time.")
+    seconds = parse_duration(body.time_hm)
+    if seconds is None:
+        return _error(400, _DURATION_ERROR)
+    entry.seconds = seconds
+    session.commit()
+    return _today_state(session)

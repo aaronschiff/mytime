@@ -151,3 +151,49 @@ def test_stop_unknown_entry_is_404(client):
     r = client.post("/api/today/999/stop")
     assert r.status_code == 404
     assert "error" in r.json()
+
+
+def test_set_time_updates_stopped_entry(client):
+    _setup(client)
+    client.post("/today/add", data={"project_id": "1", "task_type_id": "1", "notes": ""},
+                follow_redirects=False)
+    client.post("/today/1/stop")
+    r = client.post("/api/today/1/set-time", json={"time_hm": "2:15"})
+    assert r.status_code == 200
+    assert r.json()["entries"][0]["base_seconds"] == (2 * 3600 + 15 * 60)
+
+
+def test_set_time_rejects_bad_format(client):
+    _setup(client)
+    client.post("/today/add", data={"project_id": "1", "task_type_id": "1", "notes": ""},
+                follow_redirects=False)
+    client.post("/today/1/stop")
+    r = client.post("/api/today/1/set-time", json={"time_hm": "2:99"})
+    assert r.status_code == 400
+    assert "error" in r.json()
+
+
+def test_set_time_rejects_running_entry(client):
+    _setup(client)
+    client.post("/today/add", data={"project_id": "1", "task_type_id": "1", "notes": ""},
+                follow_redirects=False)
+    r = client.post("/api/today/1/set-time", json={"time_hm": "2:00"})
+    assert r.status_code == 403
+    assert "error" in r.json()
+
+
+def test_set_time_rejects_locked_entry(client):
+    _setup(client)
+    client.post("/today/add", data={"project_id": "1", "task_type_id": "1", "notes": ""},
+                follow_redirects=False)
+    client.post("/today/1/stop")
+    _lock_entry(client, 1)
+    r = client.post("/api/today/1/set-time", json={"time_hm": "2:00"})
+    assert r.status_code == 403
+    assert "error" in r.json()
+
+
+def test_set_time_unknown_entry_is_404(client):
+    _setup(client)
+    r = client.post("/api/today/999/set-time", json={"time_hm": "2:00"})
+    assert r.status_code == 404
