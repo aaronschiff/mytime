@@ -153,6 +153,27 @@ def test_stop_unknown_entry_is_404(client):
     assert "error" in r.json()
 
 
+def test_start_locked_entry_is_403(client):
+    _setup(client)
+    client.post("/today/add", data={"project_id": "1", "task_type_id": "1", "notes": ""},
+                follow_redirects=False)
+    client.post("/today/1/stop")
+    _lock_entry(client, 1)
+    r = client.post("/api/today/1/start")
+    assert r.status_code == 403
+    assert "error" in r.json()
+
+
+def test_stop_locked_entry_is_403(client):
+    _setup(client)
+    client.post("/today/add", data={"project_id": "1", "task_type_id": "1", "notes": ""},
+                follow_redirects=False)
+    _lock_entry(client, 1)
+    r = client.post("/api/today/1/stop")
+    assert r.status_code == 403
+    assert "error" in r.json()
+
+
 def test_set_time_updates_stopped_entry(client):
     _setup(client)
     client.post("/today/add", data={"project_id": "1", "task_type_id": "1", "notes": ""},
