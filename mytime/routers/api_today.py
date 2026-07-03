@@ -127,3 +127,31 @@ def set_time_entry(entry_id: int, body: SetTimeBody, session: Session = Depends(
     entry.seconds = seconds
     session.commit()
     return _today_state(session)
+
+
+class EditEntryBody(BaseModel):
+    project_id: int
+    task_type_id: int
+    duration: str
+    notes: str = ""
+
+
+@router.post("/api/today/{entry_id}/edit")
+def edit_entry(entry_id: int, body: EditEntryBody, session: Session = Depends(get_session)):
+    entry = te.get_entry(session, entry_id)
+    if entry is None:
+        return _error(404, "Time entry not found.")
+    project = projects.get_project(session, entry.project_id)
+    if project.status != "active":
+        return _error(403, "Time entries for archived projects cannot be edited.")
+    seconds = parse_duration(body.duration)
+    if seconds is None:
+        return _error(400, _DURATION_ERROR)
+    try:
+        if entry.running_since is not None:
+            timers.stop_timer(session, entry_id, now())
+        te.update_entry(session, entry_id, body.project_id, body.task_type_id,
+                        entry.entry_date, seconds, body.notes)
+    except EntryLockedError:
+        return _error(403, "This time entry is locked to an invoice.")
+    return _today_state(session)

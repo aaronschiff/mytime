@@ -197,3 +197,78 @@ def test_set_time_unknown_entry_is_404(client):
     _setup(client)
     r = client.post("/api/today/999/set-time", json={"time_hm": "2:00"})
     assert r.status_code == 404
+
+
+def test_edit_updates_stopped_entry(client):
+    _setup(client)
+    client.post("/settings/task-types", data={"name": "Design"}, follow_redirects=False)
+    client.post("/today/add", data={"project_id": "1", "task_type_id": "1", "notes": "old"},
+                follow_redirects=False)
+    client.post("/today/1/stop")
+    r = client.post("/api/today/1/edit", json={
+        "project_id": 1, "task_type_id": 2, "duration": "3:00", "notes": "new",
+    })
+    assert r.status_code == 200
+    e = r.json()["entries"][0]
+    assert e["task_type_id"] == 2
+    assert e["base_seconds"] == 3 * 3600
+    assert e["notes"] == "new"
+
+
+def test_edit_auto_stops_running_entry(client):
+    _setup(client)
+    client.post("/today/add", data={"project_id": "1", "task_type_id": "1", "notes": ""},
+                follow_redirects=False)
+    r = client.post("/api/today/1/edit", json={
+        "project_id": 1, "task_type_id": 1, "duration": "1:00", "notes": "edited",
+    })
+    assert r.status_code == 200
+    e = r.json()["entries"][0]
+    assert e["running"] is False
+    assert e["base_seconds"] == 3600
+
+
+def test_edit_bad_duration_is_400(client):
+    _setup(client)
+    client.post("/today/add", data={"project_id": "1", "task_type_id": "1", "notes": ""},
+                follow_redirects=False)
+    client.post("/today/1/stop")
+    r = client.post("/api/today/1/edit", json={
+        "project_id": 1, "task_type_id": 1, "duration": "9:99", "notes": "",
+    })
+    assert r.status_code == 400
+    assert "error" in r.json()
+
+
+def test_edit_locked_entry_is_403(client):
+    _setup(client)
+    client.post("/today/add", data={"project_id": "1", "task_type_id": "1", "notes": ""},
+                follow_redirects=False)
+    client.post("/today/1/stop")
+    _lock_entry(client, 1)
+    r = client.post("/api/today/1/edit", json={
+        "project_id": 1, "task_type_id": 1, "duration": "1:00", "notes": "",
+    })
+    assert r.status_code == 403
+    assert "error" in r.json()
+
+
+def test_edit_archived_project_is_403(client):
+    _setup(client)
+    client.post("/today/add", data={"project_id": "1", "task_type_id": "1", "notes": ""},
+                follow_redirects=False)
+    client.post("/today/1/stop")
+    client.post("/projects/1/status", data={"status": "archived"}, follow_redirects=False)
+    r = client.post("/api/today/1/edit", json={
+        "project_id": 1, "task_type_id": 1, "duration": "1:00", "notes": "",
+    })
+    assert r.status_code == 403
+    assert "error" in r.json()
+
+
+def test_edit_unknown_entry_is_404(client):
+    _setup(client)
+    r = client.post("/api/today/999/edit", json={
+        "project_id": 1, "task_type_id": 1, "duration": "1:00", "notes": "",
+    })
+    assert r.status_code == 404
