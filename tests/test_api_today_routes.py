@@ -111,3 +111,43 @@ def test_create_entry_bad_duration_is_400(client):
     assert r.status_code == 400
     assert "error" in r.json()
     assert client.get("/api/today").json()["entries"] == []  # nothing created
+
+
+def test_start_stops_other_running_timer(client):
+    """Single-running-timer invariant, enforced server-side in stop_all_running.
+    Entry 1 is left RUNNING (not stopped first) and entry 2 is created stopped
+    (start=False, so creating it doesn't itself touch entry 1) — only the
+    explicit /start call on entry 2 should stop entry 1."""
+    _setup(client)
+    client.post("/today/add", data={"project_id": "1", "task_type_id": "1", "notes": "first"},
+                follow_redirects=False)  # entry 1: running
+    client.post("/api/today/entries", json={"project_id": 1, "task_type_id": 1,
+                "notes": "second", "start": False, "duration": "1:00"})  # entry 2: stopped
+    r = client.post("/api/today/2/start")
+    assert r.status_code == 200
+    entries = {e["id"]: e for e in r.json()["entries"]}
+    assert entries[2]["running"] is True
+    assert entries[1]["running"] is False
+
+
+def test_stop_running_entry(client):
+    _setup(client)
+    client.post("/today/add", data={"project_id": "1", "task_type_id": "1", "notes": ""},
+                follow_redirects=False)
+    r = client.post("/api/today/1/stop")
+    assert r.status_code == 200
+    assert r.json()["entries"][0]["running"] is False
+
+
+def test_start_unknown_entry_is_404(client):
+    _setup(client)
+    r = client.post("/api/today/999/start")
+    assert r.status_code == 404
+    assert "error" in r.json()
+
+
+def test_stop_unknown_entry_is_404(client):
+    _setup(client)
+    r = client.post("/api/today/999/stop")
+    assert r.status_code == 404
+    assert "error" in r.json()

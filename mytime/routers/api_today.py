@@ -9,6 +9,7 @@ from mytime.clock import now, today
 from mytime.db import get_session
 from mytime.format import parse_duration
 from mytime.services import timers, projects, task_types, time_entries as te
+from mytime.services.guards import EntryLockedError
 
 router = APIRouter()
 
@@ -82,4 +83,26 @@ def create_entry(body: CreateEntryBody, session: Session = Depends(get_session))
         if seconds is None:
             return _error(400, _DURATION_ERROR)
         te.create_entry(session, body.project_id, body.task_type_id, today(), seconds, body.notes)
+    return _today_state(session)
+
+
+@router.post("/api/today/{entry_id}/start")
+def start_entry(entry_id: int, session: Session = Depends(get_session)):
+    if te.get_entry(session, entry_id) is None:
+        return _error(404, "Time entry not found.")
+    try:
+        timers.start_timer(session, entry_id, now())
+    except EntryLockedError:
+        return _error(403, "This time entry is locked to an invoice.")
+    return _today_state(session)
+
+
+@router.post("/api/today/{entry_id}/stop")
+def stop_entry(entry_id: int, session: Session = Depends(get_session)):
+    if te.get_entry(session, entry_id) is None:
+        return _error(404, "Time entry not found.")
+    try:
+        timers.stop_timer(session, entry_id, now())
+    except EntryLockedError:
+        return _error(403, "This time entry is locked to an invoice.")
     return _today_state(session)
