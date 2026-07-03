@@ -272,3 +272,31 @@ def test_edit_unknown_entry_is_404(client):
         "project_id": 1, "task_type_id": 1, "duration": "1:00", "notes": "",
     })
     assert r.status_code == 404
+
+
+def test_delete_entry(client):
+    _setup(client)
+    client.post("/today/add", data={"project_id": "1", "task_type_id": "1", "notes": ""},
+                follow_redirects=False)
+    client.post("/today/1/stop")
+    r = client.delete("/api/today/1")
+    assert r.status_code == 200
+    assert r.json()["entries"] == []
+
+
+def test_delete_locked_entry_is_403(client):
+    _setup(client)
+    client.post("/today/add", data={"project_id": "1", "task_type_id": "1", "notes": ""},
+                follow_redirects=False)
+    client.post("/today/1/stop")
+    _lock_entry(client, 1)
+    r = client.delete("/api/today/1")
+    assert r.status_code == 403
+    assert "error" in r.json()
+    assert len(client.get("/api/today").json()["entries"]) == 1  # not deleted
+
+
+def test_delete_unknown_entry_is_404(client):
+    _setup(client)
+    r = client.delete("/api/today/999")
+    assert r.status_code == 404
