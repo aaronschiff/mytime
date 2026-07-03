@@ -165,6 +165,7 @@ mytime/
   templating.py     # Jinja2 setup, registers filters (hm, hms, money, date)
   routers/          # One file per feature area; thin — delegate to services
     today.py        # /today — live timers, add/start/stop/set-time/delete
+    api_today.py    # /api/today/* — JSON API mirroring today.py, for the menubar app (see below)
     time_entries.py # /time — list, new, edit, delete
     projects.py     # /projects — CRUD, status, delete
     invoices.py     # /invoices and /projects/{id}/invoices/*
@@ -199,7 +200,7 @@ mytime/
     icons/          # apple-touch-icon.png, icon-192.png, icon-512.png, favicon.png
 tests/
   conftest.py       # In-memory SQLite fixture + TestClient with session override
-  test_*.py         # 53 tests, all passing
+  test_*.py         # 123 tests, all passing (includes test_api_today_routes.py)
 deploy/
   mytime.service    # systemd unit (generic /opt/mytime path)
   backup.py         # Consistent + verified DB snapshot; 28-day tiered retention; optional off-site push
@@ -261,6 +262,24 @@ The today view wraps the timer list in `<div id="timers">`. Start/stop/set-time/
 - **Overview:** Project cards with budget bar; over-budget in red with exceedance; remaining shown with percentage
 - **Clients:** List with project count and total invoiced; detail with Archive/Delete per project; rename propagates to all linked projects; projects sorted active-first then reverse-chronological; date-started column
 - **Settings:** Default hourly rate, currency symbol, default GST rate, task type management
+
+## Menubar JSON API (backend)
+
+`mytime/routers/api_today.py` is the backend half of a planned native macOS menubar widget (`MenuBarExtra`, SwiftUI) mirroring the Today page — the frontend itself isn't built yet (see `BACKLOG.md`). It's a thin JSON wrapper over the same `mytime/services/*` functions `today.py` already uses: no new business logic, no auth (same LAN-only trust model as the rest of the app).
+
+| Method | Path | Purpose |
+| --- | --- | --- |
+| GET | `/api/today` | Full state: day, total/week seconds, active projects, active task types, entries |
+| POST | `/api/today/entries` | Create entry — start now, or save with a duration |
+| POST | `/api/today/{id}/start` | Start (stops any other running timer — same server-enforced single-running-timer invariant as the web app) |
+| POST | `/api/today/{id}/stop` | Stop |
+| POST | `/api/today/{id}/set-time` | Quick inline elapsed-time edit (stopped entries only) |
+| POST | `/api/today/{id}/edit` | Full edit: project/task type/duration/notes — no `entry_date` (moving an entry to a different day stays a Time-page-only, web-app action) |
+| DELETE | `/api/today/{id}` | Delete |
+
+Every mutation endpoint — including create and delete — returns the same full `GET /api/today` shape on success, so a client can always replace its local state wholesale from any response rather than tracking a separate shape per action. Errors are always `{"error": "..."}` (400 bad duration, 403 locked entry/archived project, 404 unknown id) via a shared `_error()` helper — never FastAPI's default `{"detail": ...}` shape — with one accepted asymmetry: a malformed/missing JSON body field (e.g. non-integer `project_id`) falls through to FastAPI's own default 422 response, not the router's own 400/`{"error"}` shape (a documented, deliberate scope cut, not a bug — worth noting for the eventual Swift client).
+
+Cross-device sync reuses the same polling pattern already built for the web app (see "Cross-device timer sync" above) — no new mechanism, no SSE/push; the future menubar client polls `GET /api/today` and always does a full-state replace.
 
 ## Responsive phone layout
 
