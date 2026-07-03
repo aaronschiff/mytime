@@ -213,6 +213,9 @@ Forms that can be reached from multiple pages pass `from_page` as a hidden input
 ### HTMX partial reloads (today view)
 The today view wraps the timer list in `<div id="timers">`. Start/stop/set-time/delete all POST via HTMX with `hx-target="#timers" hx-swap="innerHTML"` and return just the `_today_body.html` partial — no full page reload.
 
+### Cross-device timer sync (polling + focus refresh)
+`GET /today/body` (mytime/routers/today.py) is a read-only route that returns the same `_today_body.html` partial the POST handlers already return — it exists purely so the browser can poll it. `#timers` carries `hx-trigger="every 5s, refresh-timers from:body"`, so it re-fetches on a 5s interval and whenever a `refresh-timers` custom event fires on `<body>`; a `visibilitychange` listener in `today.html` fires that event on tab/app focus, so switching back to the tab syncs instantly instead of waiting up to 5s. A guard (`htmx:beforeRequest` on `#timers`) cancels a poll while an inline elapsed-time edit is open (`.elapsed-edit-form[style*="display:inline"]`), so the swap can't clobber a half-typed value — the next 5s tick retries once the edit closes. `timer-tick.js`'s `htmx:afterSwap` handler intentionally does **not** reset `_notifiedSince` (only `tick()` re-runs) — `_checkNotification` already dedupes on the timer's `since`, so resetting it would make the ">4h still running" notification re-fire on every 5s poll. No server-side push (SSE) — this is poll-based, layerable to SSE later without touching the endpoint or the guard if push is ever added.
+
 ### `ProjectSummary` and `s` variable
 `budget.project_summary()` returns a `ProjectSummary` dataclass with `invoiced_value`, `uninvoiced_value`, `budget_remaining`, `over_budget`, `exceedance`, `total_tracked_seconds`. In templates it's always bound to `s` (both overview loop variable and `project_detail.html` context key).
 
