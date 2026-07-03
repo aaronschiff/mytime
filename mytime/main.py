@@ -26,6 +26,7 @@ from mytime.routers import today as today_router
 from mytime.routers import overview as overview_router
 from mytime.routers import invoices as invoices_router
 from mytime.routers import clients as clients_router
+from mytime.routers import api_today as api_today_router
 
 app.include_router(overview_router.router)
 app.include_router(settings_router.router)
@@ -34,3 +35,4 @@ app.include_router(time_router.router)
 app.include_router(today_router.router)
 app.include_router(invoices_router.router)
 app.include_router(clients_router.router)
+app.include_router(api_today_router.router)
