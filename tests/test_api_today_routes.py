@@ -75,3 +75,39 @@ def test_get_today_locked_entry_shape(client):
     _lock_entry(client, 1)
     e = client.get("/api/today").json()["entries"][0]
     assert e["locked"] is True
+
+
+def test_create_entry_start_now(client):
+    _setup(client)
+    r = client.post("/api/today/entries", json={
+        "project_id": 1, "task_type_id": 1, "notes": "started", "start": True,
+    })
+    assert r.status_code == 200
+    body = r.json()
+    assert len(body["entries"]) == 1
+    assert body["entries"][0]["running"] is True
+    assert body["entries"][0]["notes"] == "started"
+
+
+def test_create_entry_save_duration(client):
+    _setup(client)
+    r = client.post("/api/today/entries", json={
+        "project_id": 1, "task_type_id": 1, "notes": "logged", "start": False, "duration": "1:30",
+    })
+    assert r.status_code == 200
+    body = r.json()
+    assert len(body["entries"]) == 1
+    e = body["entries"][0]
+    assert e["running"] is False
+    assert e["base_seconds"] == 90 * 60
+    assert e["notes"] == "logged"
+
+
+def test_create_entry_bad_duration_is_400(client):
+    _setup(client)
+    r = client.post("/api/today/entries", json={
+        "project_id": 1, "task_type_id": 1, "notes": "", "start": False, "duration": "2:99",
+    })
+    assert r.status_code == 400
+    assert "error" in r.json()
+    assert client.get("/api/today").json()["entries"] == []  # nothing created

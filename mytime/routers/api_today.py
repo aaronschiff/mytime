@@ -2,10 +2,12 @@ from datetime import timedelta
 
 from fastapi import APIRouter, Depends
 from fastapi.responses import JSONResponse
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from mytime.clock import now, today
 from mytime.db import get_session
+from mytime.format import parse_duration
 from mytime.services import timers, projects, task_types, time_entries as te
 
 router = APIRouter()
@@ -60,4 +62,24 @@ def _today_state(session: Session) -> dict:
 
 @router.get("/api/today")
 def get_today(session: Session = Depends(get_session)):
+    return _today_state(session)
+
+
+class CreateEntryBody(BaseModel):
+    project_id: int
+    task_type_id: int
+    notes: str = ""
+    start: bool = True
+    duration: str = "00:00"
+
+
+@router.post("/api/today/entries")
+def create_entry(body: CreateEntryBody, session: Session = Depends(get_session)):
+    if body.start:
+        timers.add_timer(session, body.project_id, body.task_type_id, body.notes, now())
+    else:
+        seconds = parse_duration(body.duration)
+        if seconds is None:
+            return _error(400, _DURATION_ERROR)
+        te.create_entry(session, body.project_id, body.task_type_id, today(), seconds, body.notes)
     return _today_state(session)
