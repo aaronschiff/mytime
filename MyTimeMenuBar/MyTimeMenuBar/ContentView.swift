@@ -5,6 +5,7 @@ struct ContentView: View {
     // At most one row edits at a time, so a Save error can be shown right
     // under the entry that caused it instead of at the bottom of the window.
     @State private var editingEntryId: Int?
+    @FocusState private var isFocused: Bool
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -29,8 +30,22 @@ struct ContentView: View {
         }
         .padding(12)
         .frame(width: 340)
-        .onAppear { Task { await store.refreshOnOpen() } }
-        .onExitCommand { NSApp.keyWindow?.close() }
+        .focusable()
+        .focused($isFocused)
+        .onAppear {
+            Task { await store.refreshOnOpen() }
+            isFocused = true
+        }
+        .onExitCommand {
+            if editingEntryId != nil {
+                // A row's full edit form is open — cancel just that edit
+                // (same effect as its own Cancel button) rather than
+                // discarding it by closing the whole window.
+                editingEntryId = nil
+            } else {
+                NSApp.keyWindow?.close()
+            }
+        }
     }
 
     private var header: some View {
@@ -78,8 +93,10 @@ struct ContentView: View {
     /// Opens the web app's Today page in the user's default browser, using
     /// the same server URL the menubar app itself talks to (Settings).
     private func openWebApp() {
-        let base = UserDefaults.standard.string(forKey: "serverBaseURL") ?? "http://bbbee.local:8000"
-        guard let url = URL(string: base + "/today") else { return }
+        let base = UserDefaults.standard.string(forKey: "serverBaseURL") ?? AppDefaults.serverBaseURL
+        var trimmed = base.trimmingCharacters(in: .whitespaces)
+        while trimmed.hasSuffix("/") { trimmed.removeLast() }
+        guard let url = URL(string: trimmed + "/today") else { return }
         NSWorkspace.shared.open(url)
     }
 }

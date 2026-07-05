@@ -3,11 +3,11 @@ import UserNotifications
 
 @main
 struct MyTimeMenuBarApp: App {
-    @AppStorage("serverBaseURL") private var serverBaseURL = "http://bbbee.local:8000"
+    @AppStorage("serverBaseURL") private var serverBaseURL = AppDefaults.serverBaseURL
     @State private var store: TimerStore
 
     init() {
-        let url = UserDefaults.standard.string(forKey: "serverBaseURL") ?? "http://bbbee.local:8000"
+        let url = UserDefaults.standard.string(forKey: "serverBaseURL") ?? AppDefaults.serverBaseURL
         let store = TimerStore(baseURL: url)
         store.startLoops()
         _store = State(initialValue: store)
@@ -23,6 +23,7 @@ struct MyTimeMenuBarApp: App {
         } label: {
             HStack(spacing: 4) {
                 Image(systemName: store.menuBarSymbol)
+                    .renderingMode(.original)
                     .foregroundStyle(store.isRunning ? .red : .primary)
                 Text(store.menuBarTimeText).monospacedDigit()
             }
