@@ -2,6 +2,9 @@ import SwiftUI
 
 struct ContentView: View {
     @Bindable var store: TimerStore
+    // At most one row edits at a time, so a Save error can be shown right
+    // under the entry that caused it instead of at the bottom of the window.
+    @State private var editingEntryId: Int?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -12,8 +15,9 @@ struct ContentView: View {
             AddEntryForm(store: store)
             // Sits right under the add form's Save/Add & start button — the
             // action most likely to produce a validation error a user needs
-            // to actually read (bad duration format, etc).
-            if let msg = store.errorMessage {
+            // to actually read (bad duration format, etc). Suppressed while a
+            // row is being edited, since EntryEditForm shows it there instead.
+            if let msg = store.errorMessage, editingEntryId == nil {
                 ErrorBanner(message: msg) { store.errorMessage = nil }
             }
             Divider()
@@ -39,7 +43,7 @@ struct ContentView: View {
             if let entries = store.state?.entries, !entries.isEmpty {
                 VStack(alignment: .leading, spacing: 8) {
                     ForEach(entries) { e in
-                        EntryRow(store: store, entry: e)
+                        EntryRow(store: store, entry: e, editingEntryId: $editingEntryId)
                     }
                 }
             } else {
@@ -64,14 +68,25 @@ struct ContentView: View {
 struct EntryRow: View {
     @Bindable var store: TimerStore
     let entry: Entry
+    @Binding var editingEntryId: Int?
 
     @State private var editingTime = false
     @State private var timeDraft = ""
     @State private var confirmingDelete = false
 
+    private var editing: Bool { editingEntryId == entry.id }
     private var canEditTime: Bool { !entry.running && !entry.locked }
 
     var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            row
+            if editing {
+                EntryEditForm(store: store, entry: entry) { editingEntryId = nil }
+            }
+        }
+    }
+
+    private var row: some View {
         HStack(spacing: 8) {
             // Start/stop toggle (hidden for locked entries; a lock icon
             // stands in so it's clear why there are no controls).
@@ -120,6 +135,19 @@ struct EntryRow: View {
                 } else {
                     label
                 }
+            }
+
+            // Full edit (hidden for locked entries).
+            if !entry.locked {
+                Button {
+                    editingEntryId = editing ? nil : entry.id
+                } label: {
+                    Image(systemName: "pencil")
+                        .frame(width: 20, height: 20)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(.secondary)
             }
 
             // Delete (hidden for locked entries). A system confirmationDialog
@@ -242,6 +270,71 @@ struct ErrorBanner: View {
         }
         .padding(8)
         .background(.orange.opacity(0.12), in: RoundedRectangle(cornerRadius: 6))
+    }
+}
+
+struct EntryEditForm: View {
+    @Bindable var store: TimerStore
+    let entry: Entry
+    var onDone: () -> Void
+
+    @State private var projectId: Int
+    @State private var taskTypeId: Int
+    @State private var duration: String
+    @State private var notes: String
+
+    init(store: TimerStore, entry: Entry, onDone: @escaping () -> Void) {
+        self.store = store
+        self.entry = entry
+        self.onDone = onDone
+        _projectId = State(initialValue: entry.projectId)
+        _taskTypeId = State(initialValue: entry.taskTypeId)
+        _duration = State(initialValue: TimerStore.hm(entry.baseSeconds))
+        _notes = State(initialValue: entry.notes)
+    }
+
+    private var projects: [ProjectRef] { store.state?.projects ?? [] }
+    private var taskTypes: [TaskTypeRef] { store.state?.taskTypes ?? [] }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Picker("Project", selection: $projectId) {
+                ForEach(projects) { p in Text(p.name).tag(p.id) }
+            }
+            Picker("Task type", selection: $taskTypeId) {
+                ForEach(taskTypes) { t in Text(t.name).tag(t.id) }
+            }
+            HStack {
+                Text("Time").foregroundStyle(.secondary)
+                TextField("HH:MM", text: $duration)
+                    .textFieldStyle(.roundedBorder)
+                    .frame(width: 70)
+                    .monospacedDigit()
+            }
+            TextField("Notes", text: $notes)
+                .textFieldStyle(.roundedBorder)
+            if let msg = store.errorMessage {
+                ErrorBanner(message: msg) { store.errorMessage = nil }
+            }
+            HStack {
+                Spacer()
+                Button("Cancel") {
+                    store.errorMessage = nil
+                    onDone()
+                }
+                Button("Save") {
+                    Task {
+                        await store.editEntry(id: entry.id, projectId: projectId,
+                                              taskTypeId: taskTypeId,
+                                              duration: duration, notes: notes)
+                        if store.errorMessage == nil { onDone() }
+                    }
+                }
+                .keyboardShortcut(.defaultAction)
+            }
+        }
+        .padding(8)
+        .background(.gray.opacity(0.08), in: RoundedRectangle(cornerRadius: 6))
     }
 }
 
