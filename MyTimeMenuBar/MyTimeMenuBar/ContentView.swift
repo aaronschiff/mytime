@@ -6,27 +6,16 @@ struct ContentView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             header
-            if let msg = store.errorMessage {
-                HStack(alignment: .top, spacing: 6) {
-                    Image(systemName: "exclamationmark.triangle.fill")
-                        .foregroundStyle(.orange)
-                    Text(msg)
-                        .font(.callout)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                    Button {
-                        store.errorMessage = nil
-                    } label: {
-                        Image(systemName: "xmark.circle.fill")
-                    }
-                    .buttonStyle(.plain)
-                    .foregroundStyle(.secondary)
-                }
-                .padding(8)
-                .background(.orange.opacity(0.12), in: RoundedRectangle(cornerRadius: 6))
-            }
             Divider()
             entriesList
+            Divider()
+            AddEntryForm(store: store)
+            // Sits right under the add form's Save/Add & start button — the
+            // action most likely to produce a validation error a user needs
+            // to actually read (bad duration format, etc).
+            if let msg = store.errorMessage {
+                ErrorBanner(message: msg) { store.errorMessage = nil }
+            }
             Divider()
             footer
         }
@@ -110,7 +99,7 @@ struct EntryRow: View {
 
             // Click-to-edit elapsed (stopped, unlocked only).
             if editingTime {
-                TextField("H:MM", text: $timeDraft)
+                TextField("HH:MM", text: $timeDraft)
                     .textFieldStyle(.roundedBorder)
                     .frame(width: 60)
                     .monospacedDigit()
@@ -169,3 +158,90 @@ struct EntryRow: View {
         .opacity(entry.locked ? 0.55 : 1.0)
     }
 }
+
+struct AddEntryForm: View {
+    @Bindable var store: TimerStore
+
+    @State private var projectId: Int?
+    @State private var taskTypeId: Int?
+    @State private var notes = ""
+    @State private var duration = ""
+
+    private var projects: [ProjectRef] { store.state?.projects ?? [] }
+    private var taskTypes: [TaskTypeRef] { store.state?.taskTypes ?? [] }
+    private var canSubmit: Bool { projectId != nil && taskTypeId != nil }
+
+    /// Mirrors the web app's toggling behavior: an empty/zero duration means
+    /// "Add & start" a running entry; a non-zero duration means "Save" a
+    /// stopped entry with that elapsed time. Never both at once.
+    private var isDurationZero: Bool {
+        let v = duration.trimmingCharacters(in: .whitespaces)
+        return v.isEmpty || v == "00:00" || v == "0:00"
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("New entry").font(.caption).foregroundStyle(.secondary)
+
+            Picker("Project", selection: $projectId) {
+                Text("Project…").tag(Int?.none)
+                ForEach(projects) { p in Text(p.name).tag(Int?.some(p.id)) }
+            }
+            Picker("Task type", selection: $taskTypeId) {
+                Text("Task type…").tag(Int?.none)
+                ForEach(taskTypes) { t in Text(t.name).tag(Int?.some(t.id)) }
+            }
+
+            TextField("Notes (optional)", text: $notes)
+                .textFieldStyle(.roundedBorder)
+
+            HStack {
+                TextField("HH:MM", text: $duration)
+                    .textFieldStyle(.roundedBorder)
+                    .frame(width: 70)
+                Spacer()
+                Button(isDurationZero ? "Add & start" : "Save") {
+                    submit(start: isDurationZero)
+                }
+                .disabled(!canSubmit)
+                .keyboardShortcut(.defaultAction)
+            }
+        }
+    }
+
+    private func submit(start: Bool) {
+        guard let projectId, let taskTypeId else { return }
+        let dur = duration.isEmpty ? "00:00" : duration
+        Task {
+            await store.addEntry(projectId: projectId, taskTypeId: taskTypeId,
+                                 notes: notes, start: start, duration: dur)
+            // On success, reset the form. On error the banner shows and state is unchanged.
+            if store.errorMessage == nil {
+                notes = ""; duration = ""; self.projectId = nil; self.taskTypeId = nil
+            }
+        }
+    }
+}
+struct ErrorBanner: View {
+    let message: String
+    var onDismiss: () -> Void
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 6) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .foregroundStyle(.orange)
+            Text(message)
+                .font(.callout)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            Button(action: onDismiss) {
+                Image(systemName: "xmark.circle.fill")
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(.secondary)
+        }
+        .padding(8)
+        .background(.orange.opacity(0.12), in: RoundedRectangle(cornerRadius: 6))
+    }
+}
+

@@ -56,7 +56,11 @@ final class TimerStore {
     private func sync(surfaceErrors: Bool) async {
         do {
             state = try await client.fetchToday()
-            errorMessage = nil
+            // Only a user-initiated refresh (dropdown open) clears a stale
+            // banner on success — the passive background poll never touches
+            // errorMessage in either direction, or it would silently dismiss
+            // an error from a user action (e.g. a failed Add) within seconds.
+            if surfaceErrors { errorMessage = nil }
             tick()
         } catch {
             if surfaceErrors { errorMessage = message(for: error) }
