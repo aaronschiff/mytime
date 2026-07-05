@@ -12,7 +12,8 @@ final class TimerStore {
     // the UI show an error next to the thing that actually failed instead of
     // misattributing it to an unrelated open edit form.
     var errorEntryId: Int?
-    var menuTitle: String = ""      // "1:23:45" while running, "" when idle
+    var menuBarSymbol: String = "play.fill"  // menubar icon: "play.fill" idle, "stop.fill" running
+    var menuBarTimeText: String = "0:00"     // "H:MM" shown next to the menubar icon
     var isRunning: Bool = false
     var displayNow: Date = Date()   // bumped every display tick so rows re-render
 
@@ -21,6 +22,23 @@ final class TimerStore {
     @ObservationIgnored private var syncTask: Task<Void, Never>?
     @ObservationIgnored private var displayTask: Task<Void, Never>?
     @ObservationIgnored private var notifiedSince: String?
+
+    /// Id of the most recently *running* entry, persisted directly via
+    /// UserDefaults (not @AppStorage — TimerStore is a plain @Observable
+    /// class, not a View) so it survives app relaunches. 0 means "never
+    /// tracked one" (valid entry ids from the backend are >= 1). Updated in
+    /// `tick()` whenever an entry is running; left untouched when nothing is
+    /// running, so the menubar can still show "what I'd resume" after a stop.
+    private var lastRunningEntryId: Int? {
+        get {
+            let v = UserDefaults.standard.integer(forKey: "lastRunningEntryId")
+            return v == 0 ? nil : v
+        }
+        set {
+            guard let newValue else { return }
+            UserDefaults.standard.set(newValue, forKey: "lastRunningEntryId")
+        }
+    }
 
     init(baseURL: String) {
         client = APIClient(baseURL: baseURL)
@@ -149,25 +167,38 @@ final class TimerStore {
         return String(format: "%02d:%02d", mins / 60, mins % 60)
     }
 
-    /// H:MM:SS (hours un-padded, seconds shown) for the ticking menubar title.
-    static func hms(_ s: Int) -> String {
-        let s = max(0, s)
-        return "\(s / 3600):" + String(format: "%02d:%02d", (s % 3600) / 60, s % 60)
+    /// H:MM (hours un-padded, minutes zero-padded) for the menubar icon's
+    /// time text — same rounding as `hm`, just without the leading zero.
+    static func hmUnpadded(_ s: Int) -> String {
+        let mins = Int((Double(max(0, s)) / 60).rounded())
+        return "\(mins / 60):" + String(format: "%02d", mins % 60)
     }
 
     // MARK: Tick
 
     func tick() {
         displayNow = Date()
-        guard let state else { menuTitle = ""; isRunning = false; return }
+        guard let state else {
+            isRunning = false
+            menuBarSymbol = "play.fill"
+            menuBarTimeText = "0:00"
+            return
+        }
         if let running = state.entries.first(where: { $0.running }) {
-            let elapsed = liveElapsed(running)
-            menuTitle = Self.hms(elapsed)
             isRunning = true
+            lastRunningEntryId = running.id
+            let elapsed = liveElapsed(running)
+            menuBarSymbol = "stop.fill"
+            menuBarTimeText = Self.hmUnpadded(elapsed)
             checkNotification(running, elapsed: elapsed)
         } else {
-            menuTitle = ""
             isRunning = false
+            menuBarSymbol = "play.fill"
+            if let id = lastRunningEntryId, let entry = state.entries.first(where: { $0.id == id }) {
+                menuBarTimeText = Self.hmUnpadded(liveElapsed(entry))
+            } else {
+                menuBarTimeText = "0:00"
+            }
         }
     }
 

@@ -21,10 +21,10 @@ struct MyTimeMenuBarApp: App {
                     store.setBaseURL(newValue)
                 }
         } label: {
-            if store.isRunning {
-                Text(store.menuTitle).monospacedDigit()
-            } else {
-                Image(systemName: "clock")
+            HStack(spacing: 4) {
+                Image(systemName: store.menuBarSymbol)
+                    .foregroundStyle(store.isRunning ? .red : .primary)
+                Text(store.menuBarTimeText).monospacedDigit()
             }
         }
         .menuBarExtraStyle(.window)
