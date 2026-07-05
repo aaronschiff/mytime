@@ -58,14 +58,28 @@ struct ContentView: View {
 
     private var footer: some View {
         HStack {
-            Spacer()
             Button("Settings…") { SettingsWindowController.show() }
                 .buttonStyle(.plain)
                 .foregroundStyle(.secondary)
+            Spacer()
+            Button(action: openWebApp) {
+                Image(systemName: "safari")
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(.secondary)
+            Spacer()
             Button("Quit") { NSApp.terminate(nil) }
                 .buttonStyle(.plain)
                 .foregroundStyle(.secondary)
         }
+    }
+
+    /// Opens the web app's Today page in the user's default browser, using
+    /// the same server URL the menubar app itself talks to (Settings).
+    private func openWebApp() {
+        let base = UserDefaults.standard.string(forKey: "serverBaseURL") ?? "http://bbbee.local:8000"
+        guard let url = URL(string: base + "/today") else { return }
+        NSWorkspace.shared.open(url)
     }
 }
 
