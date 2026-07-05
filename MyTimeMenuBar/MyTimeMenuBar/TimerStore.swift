@@ -1,5 +1,6 @@
 import Foundation
 import Observation
+import UserNotifications
 
 @MainActor
 @Observable
@@ -14,6 +15,7 @@ final class TimerStore {
     @ObservationIgnored private var loopsStarted = false
     @ObservationIgnored private var syncTask: Task<Void, Never>?
     @ObservationIgnored private var displayTask: Task<Void, Never>?
+    @ObservationIgnored private var notifiedSince: String?
 
     init(baseURL: String) {
         client = APIClient(baseURL: baseURL)
@@ -133,11 +135,41 @@ final class TimerStore {
         displayNow = Date()
         guard let state else { menuTitle = ""; isRunning = false; return }
         if let running = state.entries.first(where: { $0.running }) {
-            menuTitle = Self.hms(liveElapsed(running))
+            let elapsed = liveElapsed(running)
+            menuTitle = Self.hms(elapsed)
             isRunning = true
+            checkNotification(running, elapsed: elapsed)
         } else {
             menuTitle = ""
             isRunning = false
         }
+    }
+
+    // MARK: 4h still-running notification
+
+    private static let notifyThresholdSeconds = 14400   // 4 hours
+
+    /// Fire a native notification once per running-timer run (deduped on `since`)
+    /// when elapsed ≥ 4 h. Because the sync loop runs even with the dropdown
+    /// closed, this fires in the background too. A no-op if authorization was
+    /// denied.
+    private func checkNotification(_ e: Entry, elapsed: Int) {
+        guard let since = e.since else { return }
+        guard elapsed >= Self.notifyThresholdSeconds else { return }
+        guard notifiedSince != since else { return }
+        notifiedSince = since
+
+        let content = UNMutableNotificationContent()
+        content.title = "Timer still running"
+        content.body = "\(e.projectName) has been running for \(Self.hoursMinutes(elapsed))"
+        let request = UNNotificationRequest(identifier: UUID().uuidString,
+                                            content: content, trigger: nil)
+        UNUserNotificationCenter.current().add(request)
+    }
+
+    /// Compact "4h 12m" duration for the notification body.
+    static func hoursMinutes(_ s: Int) -> String {
+        let mins = max(0, s) / 60
+        return "\(mins / 60)h \(mins % 60)m"
     }
 }

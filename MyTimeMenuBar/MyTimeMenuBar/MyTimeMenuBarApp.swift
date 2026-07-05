@@ -1,4 +1,5 @@
 import SwiftUI
+import UserNotifications
 
 @main
 struct MyTimeMenuBarApp: App {
@@ -10,6 +11,7 @@ struct MyTimeMenuBarApp: App {
         let store = TimerStore(baseURL: url)
         store.startLoops()
         _store = State(initialValue: store)
+        UNUserNotificationCenter.current().requestAuthorization(options: [.alert]) { _, _ in }
     }
 
     var body: some Scene {
