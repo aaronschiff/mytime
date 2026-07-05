@@ -30,6 +30,7 @@ struct ContentView: View {
         .padding(12)
         .frame(width: 340)
         .onAppear { Task { await store.refreshOnOpen() } }
+        .onExitCommand { NSApp.keyWindow?.close() }
     }
 
     private var header: some View {
