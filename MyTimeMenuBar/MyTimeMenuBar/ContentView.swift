@@ -15,10 +15,14 @@ struct ContentView: View {
             AddEntryForm(store: store)
             // Sits right under the add form's Save/Add & start button — the
             // action most likely to produce a validation error a user needs
-            // to actually read (bad duration format, etc). Suppressed while a
-            // row is being edited, since EntryEditForm shows it there instead.
-            if let msg = store.errorMessage, editingEntryId == nil {
-                ErrorBanner(message: msg) { store.errorMessage = nil }
+            // to actually read (bad duration format, etc). Suppressed only
+            // when the currently-open edit form is the one the error belongs
+            // to (it shows it inline instead) — an error from a different
+            // row's action, or from the add form, still shows here even
+            // while some other row is being edited.
+            if let msg = store.errorMessage,
+               !(editingEntryId != nil && editingEntryId == store.errorEntryId) {
+                ErrorBanner(message: msg) { store.dismissError() }
             }
             Divider()
             footer
@@ -83,6 +87,28 @@ struct EntryRow: View {
             if editing {
                 EntryEditForm(store: store, entry: entry) { editingEntryId = nil }
             }
+        }
+        // If this entry becomes locked (e.g. invoiced from another client)
+        // while its edit form is open, force it closed rather than let Save
+        // submit against a since-changed entry.
+        .onChange(of: entry.locked) { _, locked in
+            if locked {
+                if editing { editingEntryId = nil }
+                confirmingDelete = false
+            }
+        }
+        // Same idea for the inline time editor: if the entry starts running
+        // or becomes locked elsewhere while it's open, close it rather than
+        // let a stale edit submit against the new state.
+        .onChange(of: canEditTime) { _, canEdit in
+            if !canEdit { editingTime = false }
+        }
+        // If this entry is deleted while its edit form is open, ForEach
+        // removes this view — reset editingEntryId so a dangling reference
+        // doesn't permanently suppress the bottom error banner for the rest
+        // of the session (its suppression check compares against this id).
+        .onDisappear {
+            if editing { editingEntryId = nil }
         }
     }
 
@@ -289,7 +315,11 @@ struct EntryEditForm: View {
         self.onDone = onDone
         _projectId = State(initialValue: entry.projectId)
         _taskTypeId = State(initialValue: entry.taskTypeId)
-        _duration = State(initialValue: TimerStore.hm(entry.baseSeconds))
+        // Live elapsed, not entry.baseSeconds — the backend stops a running
+        // entry and overwrites its total from this value unconditionally, so
+        // prefilling from the stale stored base would silently discard all
+        // the time it accumulated while running.
+        _duration = State(initialValue: TimerStore.hm(store.liveElapsed(entry)))
         _notes = State(initialValue: entry.notes)
     }
 
@@ -313,13 +343,13 @@ struct EntryEditForm: View {
             }
             TextField("Notes", text: $notes)
                 .textFieldStyle(.roundedBorder)
-            if let msg = store.errorMessage {
-                ErrorBanner(message: msg) { store.errorMessage = nil }
+            if let msg = store.errorMessage, store.errorEntryId == entry.id {
+                ErrorBanner(message: msg) { store.dismissError() }
             }
             HStack {
                 Spacer()
                 Button("Cancel") {
-                    store.errorMessage = nil
+                    if store.errorEntryId == entry.id { store.dismissError() }
                     onDone()
                 }
                 Button("Save") {

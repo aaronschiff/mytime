@@ -25,7 +25,8 @@ enum SettingsWindowController {
     static func show() {
         NSApp.activate(ignoringOtherApps: true)
         if let window {
-            window.makeKeyAndOrderFront(nil)
+            window.orderFrontRegardless()
+            window.makeKey()
             return
         }
         let hosting = NSHostingController(rootView: SettingsView())
@@ -33,8 +34,15 @@ enum SettingsWindowController {
         newWindow.title = "Settings"
         newWindow.styleMask = [.titled, .closable]
         newWindow.isReleasedWhenClosed = false
+        // MenuBarExtra's own dropdown panel sits at an elevated window level
+        // (around .statusBar) — .floating (much lower) still rendered behind
+        // it. .popUpMenu is the level NSMenu's own popups use and clears it.
+        // orderFrontRegardless() also doesn't wait on app-activation timing
+        // the way makeKeyAndOrderFront(_:) can.
+        newWindow.level = .popUpMenu
         newWindow.center()
         window = newWindow
-        newWindow.makeKeyAndOrderFront(nil)
+        newWindow.orderFrontRegardless()
+        newWindow.makeKey()
     }
 }

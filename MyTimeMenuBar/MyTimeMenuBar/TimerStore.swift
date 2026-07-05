@@ -7,6 +7,11 @@ import UserNotifications
 final class TimerStore {
     var state: TodayState?
     var errorMessage: String?
+    // Which entry's action produced errorMessage; nil means a general error
+    // (Add form, connectivity) rather than one tied to a specific row. Lets
+    // the UI show an error next to the thing that actually failed instead of
+    // misattributing it to an unrelated open edit form.
+    var errorEntryId: Int?
     var menuTitle: String = ""      // "1:23:45" while running, "" when idle
     var isRunning: Bool = false
     var displayNow: Date = Date()   // bumped every display tick so rows re-render
@@ -21,9 +26,20 @@ final class TimerStore {
         client = APIClient(baseURL: baseURL)
     }
 
+    func dismissError() {
+        errorMessage = nil
+        errorEntryId = nil
+    }
+
+    /// Cancels and restarts the sync loop against the new URL. Cancelling
+    /// (rather than just letting the old loop keep running) also cancels any
+    /// in-flight fetch against the old server — URLSession's async API
+    /// observes Swift Task cancellation — so a stale response from the old
+    /// server can no longer land after the new one and overwrite fresh state.
     func setBaseURL(_ url: String) {
         client.baseURL = url
-        Task { await sync(surfaceErrors: false) }
+        syncTask?.cancel()
+        syncTask = Task { [weak self] in await self?.syncLoop() }
     }
 
     // MARK: Loops
@@ -34,12 +50,7 @@ final class TimerStore {
     func startLoops() {
         guard !loopsStarted else { return }
         loopsStarted = true
-        syncTask = Task { [weak self] in
-            while !Task.isCancelled {
-                await self?.sync(surfaceErrors: false)
-                try? await Task.sleep(for: .seconds(20))
-            }
-        }
+        syncTask = Task { [weak self] in await self?.syncLoop() }
         displayTask = Task { [weak self] in
             while !Task.isCancelled {
                 self?.tick()
@@ -48,24 +59,37 @@ final class TimerStore {
         }
     }
 
+    private func syncLoop() async {
+        while !Task.isCancelled {
+            await sync(surfaceErrors: false)
+            try? await Task.sleep(for: .seconds(20))
+        }
+    }
+
     /// One immediate fetch when the dropdown opens — the menubar equivalent of
     /// the web app's visibilitychange focus-refresh. User-initiated, so it
-    /// surfaces errors.
+    /// surfaces new errors, but (like the background poll) never silently
+    /// clears an existing one — only a manual dismiss or a new action's own
+    /// success does that. Otherwise just reopening the dropdown after a
+    /// failed action would wipe the banner before the user acted on it.
     func refreshOnOpen() async {
         await sync(surfaceErrors: true)
     }
 
     private func sync(surfaceErrors: Bool) async {
+        // Self-heals the base URL from UserDefaults every cycle rather than
+        // relying solely on MyTimeMenuBarApp's onChange(of: serverBaseURL) —
+        // that's attached to the MenuBarExtra dropdown's content view, whose
+        // show/hide lifecycle isn't guaranteed to keep observing changes made
+        // in the separate Settings window while the dropdown is closed.
+        if let stored = UserDefaults.standard.string(forKey: "serverBaseURL"), stored != client.baseURL {
+            client.baseURL = stored
+        }
         do {
             state = try await client.fetchToday()
-            // Only a user-initiated refresh (dropdown open) clears a stale
-            // banner on success — the passive background poll never touches
-            // errorMessage in either direction, or it would silently dismiss
-            // an error from a user action (e.g. a failed Add) within seconds.
-            if surfaceErrors { errorMessage = nil }
             tick()
         } catch {
-            if surfaceErrors { errorMessage = message(for: error) }
+            if surfaceErrors { errorMessage = message(for: error); errorEntryId = nil }
             // Background poll failures stay silent (banner is for user actions).
         }
     }
@@ -74,28 +98,30 @@ final class TimerStore {
 
     func addEntry(projectId: Int, taskTypeId: Int, notes: String,
                   start: Bool, duration: String) async {
-        await perform { try await $0.createEntry(projectId: projectId, taskTypeId: taskTypeId,
+        await perform(entryId: nil) { try await $0.createEntry(projectId: projectId, taskTypeId: taskTypeId,
                                                  notes: notes, start: start, duration: duration) }
     }
-    func startEntry(id: Int) async { await perform { try await $0.start(id: id) } }
-    func stopEntry(id: Int) async { await perform { try await $0.stop(id: id) } }
+    func startEntry(id: Int) async { await perform(entryId: id) { try await $0.start(id: id) } }
+    func stopEntry(id: Int) async { await perform(entryId: id) { try await $0.stop(id: id) } }
     func setTime(id: Int, timeHM: String) async {
-        await perform { try await $0.setTime(id: id, timeHM: timeHM) }
+        await perform(entryId: id) { try await $0.setTime(id: id, timeHM: timeHM) }
     }
     func editEntry(id: Int, projectId: Int, taskTypeId: Int,
                    duration: String, notes: String) async {
-        await perform { try await $0.edit(id: id, projectId: projectId, taskTypeId: taskTypeId,
+        await perform(entryId: id) { try await $0.edit(id: id, projectId: projectId, taskTypeId: taskTypeId,
                                           duration: duration, notes: notes) }
     }
-    func deleteEntry(id: Int) async { await perform { try await $0.delete(id: id) } }
+    func deleteEntry(id: Int) async { await perform(entryId: id) { try await $0.delete(id: id) } }
 
-    private func perform(_ op: (APIClient) async throws -> TodayState) async {
+    private func perform(entryId: Int?, _ op: (APIClient) async throws -> TodayState) async {
         do {
             state = try await op(client)
             errorMessage = nil
+            errorEntryId = nil
             tick()
         } catch {
             errorMessage = message(for: error)
+            errorEntryId = entryId
         }
     }
 

@@ -60,7 +60,8 @@ struct APIClient {
 
     private func request(_ path: String, method: String,
                          body: [String: Any]?) async throws -> TodayState {
-        let trimmed = baseURL.trimmingCharacters(in: .whitespaces)
+        var trimmed = baseURL.trimmingCharacters(in: .whitespaces)
+        while trimmed.hasSuffix("/") { trimmed.removeLast() }
         guard let url = URL(string: trimmed + path) else {
             throw APIError.message("Invalid server URL in Settings.")
         }
