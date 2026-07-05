@@ -265,7 +265,7 @@ The today view wraps the timer list in `<div id="timers">`. Start/stop/set-time/
 
 ## Menubar JSON API (backend)
 
-`mytime/routers/api_today.py` is the backend half of a planned native macOS menubar widget (`MenuBarExtra`, SwiftUI) mirroring the Today page — the frontend itself isn't built yet (see `BACKLOG.md`). It's a thin JSON wrapper over the same `mytime/services/*` functions `today.py` already uses: no new business logic, no auth (same LAN-only trust model as the rest of the app).
+`mytime/routers/api_today.py` is the backend half of the native macOS menubar widget (`MenuBarExtra`, SwiftUI) mirroring the Today page — see "Menubar app (frontend)" below for the client. It's a thin JSON wrapper over the same `mytime/services/*` functions `today.py` already uses: no new business logic, no auth (same LAN-only trust model as the rest of the app).
 
 | Method | Path | Purpose |
 | --- | --- | --- |
@@ -279,7 +279,17 @@ The today view wraps the timer list in `<div id="timers">`. Start/stop/set-time/
 
 Every mutation endpoint — including create and delete — returns the same full `GET /api/today` shape on success, so a client can always replace its local state wholesale from any response rather than tracking a separate shape per action. Errors are always `{"error": "..."}` (400 bad duration, 403 locked entry/archived project, 404 unknown id) via a shared `_error()` helper — never FastAPI's default `{"detail": ...}` shape — with one accepted asymmetry: a malformed/missing JSON body field (e.g. non-integer `project_id`) falls through to FastAPI's own default 422 response, not the router's own 400/`{"error"}` shape (a documented, deliberate scope cut, not a bug — worth noting for the eventual Swift client).
 
-Cross-device sync reuses the same polling pattern already built for the web app (see "Cross-device timer sync" above) — no new mechanism, no SSE/push; the future menubar client polls `GET /api/today` and always does a full-state replace.
+Cross-device sync reuses the same polling pattern already built for the web app (see "Cross-device timer sync" above) — no new mechanism, no SSE/push; the menubar client polls `GET /api/today` and always does a full-state replace.
+
+## Menubar app (frontend)
+
+`MyTimeMenuBar/` (repo root) is a native macOS `MenuBarExtra` (SwiftUI, macOS 14+) client for the `/api/today` backend — full parity with the web Today view (list, add, start/stop, click-to-edit elapsed, full edit, delete) plus a live-ticking `H:MM:SS` elapsed time in the menubar title. No Dock icon (`LSUIElement`); server URL is the only setting (`@AppStorage`, default `http://bbbee.local:8000`), edited via a small AppKit-managed settings window (`SettingsWindowController` in `SettingsView.swift`). Two background loops in `TimerStore`: a 1s display tick (recomputes elapsed from `base_seconds + (now - since)`, never a local counter) and a ~20s sync poll (full-state replace, catches web/other-device changes; deliberately never touches the error banner, or it would silently clear a user-facing error within seconds). A `UNUserNotificationCenter` alert fires when a timer runs past 4 hours, deduped on the entry's `since`.
+
+App Sandbox is off (`ENABLE_APP_SANDBOX = NO`): the Xcode macOS App template enables it by default with no entitlements, which silently blocks all outgoing network connections, including to `localhost`; this personal LAN utility (Personal Team signing, never App Store) has no need for it.
+
+Two platform quirks worth knowing if touching this code: (1) SwiftUI's `Settings` scene / `openSettings()` reliably fails to present a window for `MenuBarExtra`-only (LSUIElement) apps — hence the AppKit-based `SettingsWindowController` workaround. (2) System-level presentations in general (`.confirmationDialog`, likely `.alert`/`.sheet` too) can leave `MenuBarExtra`'s special window stuck/invisible after dismissal — the delete confirmation in `EntryRow` uses an inline confirm (Delete? / ✓ / ✕) instead, never a system dialog.
+
+The Xcode project itself (`.xcodeproj`, signing with a free Personal Team, `LSUIElement`, and the `NSAllowsLocalNetworking` ATS exception for plain-HTTP LAN access) is set up by hand in the Xcode GUI; the `.swift` sources are edited directly (via the Xcode MCP tool in this session, which also drove `BuildProject`/`GetBuildLog` verification after every change). No XCTest target — the two Foundation-only files (`Models.swift`, `APIClient.swift`) have CLI smoke-checks via `swiftc`; the SwiftUI runtime was verified by building and interactively testing in Xcode. Design spec: `docs/superpowers/specs/2026-07-03-menubar-swiftui-app-design.md`; plan: `docs/superpowers/plans/2026-07-05-menubar-swiftui-app.md`.
 
 ## Responsive phone layout
 
