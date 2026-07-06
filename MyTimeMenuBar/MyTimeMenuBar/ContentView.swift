@@ -1,11 +1,25 @@
 import SwiftUI
 
+enum FocusTarget: Hashable {
+    case container
+    case addNotes
+    case addDuration
+    case rowTime(Int)
+    case rowEditDuration(Int)
+    case rowEditNotes(Int)
+}
+
 struct ContentView: View {
     @Bindable var store: TimerStore
     // At most one row edits at a time, so a Save error can be shown right
     // under the entry that caused it instead of at the bottom of the window.
     @State private var editingEntryId: Int?
-    @FocusState private var isFocused: Bool
+    // Single shared focus target for the whole dropdown (see FocusTarget):
+    // every focusable field sets this back to .container when it loses
+    // focus via Esc, so a second Esc always has something to land on and
+    // reaches this view's own onExitCommand instead of finding no
+    // responder at all (which triggers the system beep instead).
+    @FocusState private var focusTarget: FocusTarget?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -13,7 +27,7 @@ struct ContentView: View {
             Divider()
             entriesList
             Divider()
-            AddEntryForm(store: store)
+            AddEntryForm(store: store, focusTarget: $focusTarget)
             // Sits right under the add form's Save/Add & start button — the
             // action most likely to produce a validation error a user needs
             // to actually read (bad duration format, etc). Suppressed only
@@ -31,10 +45,11 @@ struct ContentView: View {
         .padding(12)
         .frame(width: 340)
         .focusable()
-        .focused($isFocused)
+        .focusEffectDisabled()
+        .focused($focusTarget, equals: .container)
         .onAppear {
             Task { await store.refreshOnOpen() }
-            isFocused = true
+            focusTarget = .container
         }
         .onExitCommand {
             if editingEntryId != nil {
@@ -68,7 +83,7 @@ struct ContentView: View {
             if let entries = store.state?.entries, !entries.isEmpty {
                 VStack(alignment: .leading, spacing: 8) {
                     ForEach(entries) { e in
-                        EntryRow(store: store, entry: e, editingEntryId: $editingEntryId)
+                        EntryRow(store: store, entry: e, editingEntryId: $editingEntryId, focusTarget: $focusTarget)
                     }
                 }
             } else {
@@ -110,11 +125,11 @@ struct EntryRow: View {
     @Bindable var store: TimerStore
     let entry: Entry
     @Binding var editingEntryId: Int?
+    @FocusState.Binding var focusTarget: FocusTarget?
 
     @State private var editingTime = false
     @State private var timeDraft = ""
     @State private var confirmingDelete = false
-    @FocusState private var timeFieldFocused: Bool
 
     private var editing: Bool { editingEntryId == entry.id }
     private var canEditTime: Bool { !entry.running && !entry.locked }
@@ -123,7 +138,7 @@ struct EntryRow: View {
         VStack(alignment: .leading, spacing: 6) {
             row
             if editing {
-                EntryEditForm(store: store, entry: entry) { editingEntryId = nil }
+                EntryEditForm(store: store, entry: entry, focusTarget: $focusTarget) { editingEntryId = nil }
             }
         }
         // If this entry becomes locked (e.g. invoiced from another client)
@@ -182,8 +197,8 @@ struct EntryRow: View {
                     .textFieldStyle(.roundedBorder)
                     .frame(width: 60)
                     .monospacedDigit()
-                    .focused($timeFieldFocused)
-                    .onExitCommand { timeFieldFocused = false }
+                    .focused($focusTarget, equals: .rowTime(entry.id))
+                    .onExitCommand { focusTarget = .container }
                     .onSubmit {
                         Task { await store.setTime(id: entry.id, timeHM: timeDraft) }
                         editingTime = false
@@ -196,7 +211,7 @@ struct EntryRow: View {
                     Button {
                         timeDraft = TimerStore.hm(store.liveElapsed(entry))
                         editingTime = true
-                        timeFieldFocused = true
+                        focusTarget = .rowTime(entry.id)
                     } label: { label }
                     .buttonStyle(.plain)
                 } else {
@@ -256,13 +271,12 @@ struct EntryRow: View {
 
 struct AddEntryForm: View {
     @Bindable var store: TimerStore
+    @FocusState.Binding var focusTarget: FocusTarget?
 
     @State private var projectId: Int?
     @State private var taskTypeId: Int?
     @State private var notes = ""
     @State private var duration = ""
-    @FocusState private var notesFocused: Bool
-    @FocusState private var durationFocused: Bool
 
     private var projects: [ProjectRef] { store.state?.projects ?? [] }
     private var taskTypes: [TaskTypeRef] { store.state?.taskTypes ?? [] }
@@ -291,15 +305,15 @@ struct AddEntryForm: View {
 
             TextField("Notes (optional)", text: $notes)
                 .textFieldStyle(.roundedBorder)
-                .focused($notesFocused)
-                .onExitCommand { notesFocused = false }
+                .focused($focusTarget, equals: .addNotes)
+                .onExitCommand { focusTarget = .container }
 
             HStack {
                 TextField("HH:MM", text: $duration)
                     .textFieldStyle(.roundedBorder)
                     .frame(width: 70)
-                    .focused($durationFocused)
-                    .onExitCommand { durationFocused = false }
+                    .focused($focusTarget, equals: .addDuration)
+                    .onExitCommand { focusTarget = .container }
                 Spacer()
                 Button(isDurationZero ? "Add & start" : "Save") {
                     submit(start: isDurationZero)
@@ -349,18 +363,18 @@ struct ErrorBanner: View {
 struct EntryEditForm: View {
     @Bindable var store: TimerStore
     let entry: Entry
+    @FocusState.Binding var focusTarget: FocusTarget?
     var onDone: () -> Void
 
     @State private var projectId: Int
     @State private var taskTypeId: Int
     @State private var duration: String
     @State private var notes: String
-    @FocusState private var durationFocused: Bool
-    @FocusState private var notesFocused: Bool
 
-    init(store: TimerStore, entry: Entry, onDone: @escaping () -> Void) {
+    init(store: TimerStore, entry: Entry, focusTarget: FocusState<FocusTarget?>.Binding, onDone: @escaping () -> Void) {
         self.store = store
         self.entry = entry
+        self._focusTarget = focusTarget
         self.onDone = onDone
         _projectId = State(initialValue: entry.projectId)
         _taskTypeId = State(initialValue: entry.taskTypeId)
@@ -389,13 +403,13 @@ struct EntryEditForm: View {
                     .textFieldStyle(.roundedBorder)
                     .frame(width: 70)
                     .monospacedDigit()
-                    .focused($durationFocused)
-                    .onExitCommand { durationFocused = false }
+                    .focused($focusTarget, equals: .rowEditDuration(entry.id))
+                    .onExitCommand { focusTarget = .container }
             }
             TextField("Notes", text: $notes)
                 .textFieldStyle(.roundedBorder)
-                .focused($notesFocused)
-                .onExitCommand { notesFocused = false }
+                .focused($focusTarget, equals: .rowEditNotes(entry.id))
+                .onExitCommand { focusTarget = .container }
             if let msg = store.errorMessage, store.errorEntryId == entry.id {
                 ErrorBanner(message: msg) { store.dismissError() }
             }
@@ -420,4 +434,3 @@ struct EntryEditForm: View {
         .background(.gray.opacity(0.08), in: RoundedRectangle(cornerRadius: 6))
     }
 }
-

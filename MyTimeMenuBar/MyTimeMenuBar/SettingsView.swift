@@ -44,7 +44,11 @@ struct SettingsView: View {
 @MainActor
 enum SettingsWindowController {
     static func show() {
-        NSApp.activate(ignoringOtherApps: true)
+        // No NSApp.activate() here: this is always invoked from a click
+        // already happening inside our own active, frontmost dropdown, so
+        // the app is already active. Calling activate() anyway was found to
+        // trigger an activation-cycle side effect that closed the dropdown
+        // when this Settings window was later dismissed.
         let currentURL = UserDefaults.standard.string(forKey: "serverBaseURL") ?? AppDefaults.serverBaseURL
 
         var window: NSWindow!
