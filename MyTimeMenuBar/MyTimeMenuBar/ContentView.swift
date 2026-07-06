@@ -52,18 +52,16 @@ struct ContentView: View {
             focusTarget = .container
         }
         .onExitCommand {
+            // Esc no longer dismisses the whole dropdown: both attempts to
+            // do that (NSApp.keyWindow?.close(), then NSApp.hide(nil)) left
+            // the status-item icon stuck highlighted afterward, requiring an
+            // extra click to reopen it — worse than not supporting
+            // Esc-to-dismiss at all. No supported MenuBarExtra API was found
+            // to reset that highlight (Apple Feedback FB11984872). Canceling
+            // an open row edit is unaffected (it never hides the window) and
+            // stays, since it's a harmless, useful Esc shortcut.
             if editingEntryId != nil {
-                // A row's full edit form is open — cancel just that edit
-                // (same effect as its own Cancel button) rather than
-                // discarding it by closing the whole window.
                 editingEntryId = nil
-            } else {
-                // NSApp.keyWindow?.close() left the status-item icon stuck in
-                // its highlighted/active state — closing the window directly
-                // bypasses whatever internal bookkeeping MenuBarExtra uses to
-                // reset that. Hiding the app instead goes through the normal
-                // deactivation path and clears the highlight correctly.
-                NSApp.hide(nil)
             }
         }
     }
