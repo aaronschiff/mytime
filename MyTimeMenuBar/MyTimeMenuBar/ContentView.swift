@@ -43,7 +43,12 @@ struct ContentView: View {
                 // discarding it by closing the whole window.
                 editingEntryId = nil
             } else {
-                NSApp.keyWindow?.close()
+                // NSApp.keyWindow?.close() left the status-item icon stuck in
+                // its highlighted/active state — closing the window directly
+                // bypasses whatever internal bookkeeping MenuBarExtra uses to
+                // reset that. Hiding the app instead goes through the normal
+                // deactivation path and clears the highlight correctly.
+                NSApp.hide(nil)
             }
         }
     }
@@ -109,6 +114,7 @@ struct EntryRow: View {
     @State private var editingTime = false
     @State private var timeDraft = ""
     @State private var confirmingDelete = false
+    @FocusState private var timeFieldFocused: Bool
 
     private var editing: Bool { editingEntryId == entry.id }
     private var canEditTime: Bool { !entry.running && !entry.locked }
@@ -176,6 +182,8 @@ struct EntryRow: View {
                     .textFieldStyle(.roundedBorder)
                     .frame(width: 60)
                     .monospacedDigit()
+                    .focused($timeFieldFocused)
+                    .onExitCommand { timeFieldFocused = false }
                     .onSubmit {
                         Task { await store.setTime(id: entry.id, timeHM: timeDraft) }
                         editingTime = false
@@ -188,6 +196,7 @@ struct EntryRow: View {
                     Button {
                         timeDraft = TimerStore.hm(store.liveElapsed(entry))
                         editingTime = true
+                        timeFieldFocused = true
                     } label: { label }
                     .buttonStyle(.plain)
                 } else {
@@ -252,6 +261,8 @@ struct AddEntryForm: View {
     @State private var taskTypeId: Int?
     @State private var notes = ""
     @State private var duration = ""
+    @FocusState private var notesFocused: Bool
+    @FocusState private var durationFocused: Bool
 
     private var projects: [ProjectRef] { store.state?.projects ?? [] }
     private var taskTypes: [TaskTypeRef] { store.state?.taskTypes ?? [] }
@@ -280,11 +291,15 @@ struct AddEntryForm: View {
 
             TextField("Notes (optional)", text: $notes)
                 .textFieldStyle(.roundedBorder)
+                .focused($notesFocused)
+                .onExitCommand { notesFocused = false }
 
             HStack {
                 TextField("HH:MM", text: $duration)
                     .textFieldStyle(.roundedBorder)
                     .frame(width: 70)
+                    .focused($durationFocused)
+                    .onExitCommand { durationFocused = false }
                 Spacer()
                 Button(isDurationZero ? "Add & start" : "Save") {
                     submit(start: isDurationZero)
@@ -340,6 +355,8 @@ struct EntryEditForm: View {
     @State private var taskTypeId: Int
     @State private var duration: String
     @State private var notes: String
+    @FocusState private var durationFocused: Bool
+    @FocusState private var notesFocused: Bool
 
     init(store: TimerStore, entry: Entry, onDone: @escaping () -> Void) {
         self.store = store
@@ -372,9 +389,13 @@ struct EntryEditForm: View {
                     .textFieldStyle(.roundedBorder)
                     .frame(width: 70)
                     .monospacedDigit()
+                    .focused($durationFocused)
+                    .onExitCommand { durationFocused = false }
             }
             TextField("Notes", text: $notes)
                 .textFieldStyle(.roundedBorder)
+                .focused($notesFocused)
+                .onExitCommand { notesFocused = false }
             if let msg = store.errorMessage, store.errorEntryId == entry.id {
                 ErrorBanner(message: msg) { store.dismissError() }
             }
