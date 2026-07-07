@@ -13,3 +13,4 @@ docs/superpowers/
 .superpowers/
 deploy/deploy-bbbee.sh
 deploy/bbbee.md
+MyTimeMenuBar/build/
