@@ -12,7 +12,12 @@ final class TimerStore {
     // the UI show an error next to the thing that actually failed instead of
     // misattributing it to an unrelated open edit form.
     var errorEntryId: Int?
-    var menuBarSymbol: String = "play.fill"  // menubar icon: "play.fill" idle, "stop.fill" running
+    // True when errorMessage is a "can't reach the server" failure rather
+    // than a validation/HTTP error. Connectivity errors aren't user-
+    // dismissable (dismissError() below is a no-op for them) and clear
+    // themselves the moment any request succeeds again — see sync()/perform().
+    var errorIsConnectivity: Bool = false
+    var menuBarSymbol: String = "stop.fill"  // menubar icon: "stop.fill" idle (uncolored), "circle.fill" running (green dot)
     var menuBarTimeText: String = "0:00"     // "H:MM" shown next to the menubar icon
     var isRunning: Bool = false
     var displayNow: Date = Date()   // bumped every display tick so rows re-render
@@ -44,7 +49,11 @@ final class TimerStore {
         client = APIClient(baseURL: baseURL)
     }
 
+    /// No-op for connectivity errors — those clear themselves once the
+    /// server is reachable again, and shouldn't be dismissable in the
+    /// meantime (see errorIsConnectivity).
     func dismissError() {
+        guard !errorIsConnectivity else { return }
         errorMessage = nil
         errorEntryId = nil
     }
@@ -106,9 +115,29 @@ final class TimerStore {
         do {
             state = try await client.fetchToday()
             tick()
+            // Auto-heal: a visible connectivity error clears itself the
+            // moment any fetch succeeds again, even one from the silent
+            // background loop — that's the whole point of not making the
+            // user dismiss it manually.
+            if errorIsConnectivity {
+                errorMessage = nil
+                errorEntryId = nil
+                errorIsConnectivity = false
+            }
         } catch {
-            if surfaceErrors { errorMessage = message(for: error); errorEntryId = nil }
-            // Background poll failures stay silent (banner is for user actions).
+            let connectivity = isConnectivityError(error)
+            // Connectivity errors always surface, even from the silent
+            // background loop — that's what makes the banner track live
+            // reachability (e.g. right after the user points Settings at a
+            // dead address) instead of only appearing after some unrelated
+            // user action. Other background-poll failures (a malformed
+            // response, say) still stay silent — the banner is for user
+            // actions in that case.
+            if surfaceErrors || connectivity {
+                errorMessage = message(for: error)
+                errorEntryId = nil
+                errorIsConnectivity = connectivity
+            }
         }
     }
 
@@ -136,15 +165,22 @@ final class TimerStore {
             state = try await op(client)
             errorMessage = nil
             errorEntryId = nil
+            errorIsConnectivity = false
             tick()
         } catch {
             errorMessage = message(for: error)
             errorEntryId = entryId
+            errorIsConnectivity = isConnectivityError(error)
         }
     }
 
     private func message(for error: Error) -> String {
         (error as? LocalizedError)?.errorDescription ?? "Something went wrong."
+    }
+
+    private func isConnectivityError(_ error: Error) -> Bool {
+        if case APIError.connectivity = error { return true }
+        return false
     }
 
     // MARK: Live elapsed math (recomputed, never a local counter)
@@ -180,7 +216,7 @@ final class TimerStore {
         displayNow = Date()
         guard let state else {
             isRunning = false
-            menuBarSymbol = "play.fill"
+            menuBarSymbol = "stop.fill"
             menuBarTimeText = "0:00"
             return
         }
@@ -188,12 +224,12 @@ final class TimerStore {
             isRunning = true
             lastRunningEntryId = running.id
             let elapsed = liveElapsed(running)
-            menuBarSymbol = "stop.fill"
+            menuBarSymbol = "circle.fill"
             menuBarTimeText = Self.hmUnpadded(elapsed)
             checkNotification(running, elapsed: elapsed)
         } else {
             isRunning = false
-            menuBarSymbol = "play.fill"
+            menuBarSymbol = "stop.fill"
             if let id = lastRunningEntryId, let entry = state.entries.first(where: { $0.id == id }) {
                 menuBarTimeText = Self.hmUnpadded(liveElapsed(entry))
             } else {

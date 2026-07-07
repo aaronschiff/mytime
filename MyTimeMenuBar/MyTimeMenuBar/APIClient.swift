@@ -2,9 +2,15 @@ import Foundation
 
 enum APIError: LocalizedError {
     case message(String)
+    // Distinguished from `.message` so the UI can treat "server unreachable"
+    // specially: not user-dismissable, and auto-cleared the moment a request
+    // succeeds again (see TimerStore.errorIsConnectivity).
+    case connectivity(String)
     var errorDescription: String? {
-        if case .message(let m) = self { return m }
-        return nil
+        switch self {
+        case .message(let m): return m
+        case .connectivity(let m): return m
+        }
     }
 }
 
@@ -77,7 +83,7 @@ struct APIClient {
         do {
             (data, response) = try await URLSession.shared.data(for: req)
         } catch {
-            throw APIError.message("Can't reach the server. Check it's running and the address in Settings.")
+            throw APIError.connectivity("Can't reach the server. Check it's running and the address in Settings.")
         }
 
         guard let http = response as? HTTPURLResponse else {

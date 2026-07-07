@@ -14,6 +14,11 @@ struct ContentView: View {
     // At most one row edits at a time, so a Save error can be shown right
     // under the entry that caused it instead of at the bottom of the window.
     @State private var editingEntryId: Int?
+    // Which row's inline elapsed-time editor (see EntryRow) is open, if any.
+    // Lifted up here (rather than local per-row @State) so the background
+    // tap-catcher below can close it from outside EntryRow — and, as a side
+    // effect, only one row's inline time editor can ever be open at once.
+    @State private var editingTimeEntryId: Int?
     // Single shared focus target for the whole dropdown (see FocusTarget):
     // every focusable field sets this back to .container when it loses
     // focus via Esc, so a second Esc always has something to land on and
@@ -37,7 +42,7 @@ struct ContentView: View {
             // while some other row is being edited.
             if let msg = store.errorMessage,
                !(editingEntryId != nil && editingEntryId == store.errorEntryId) {
-                ErrorBanner(message: msg) { store.dismissError() }
+                ErrorBanner(message: msg, onDismiss: store.errorIsConnectivity ? nil : { store.dismissError() })
             }
             Divider()
             footer
@@ -47,6 +52,16 @@ struct ContentView: View {
         .focusable()
         .focusEffectDisabled()
         .focused($focusTarget, equals: .container)
+        // Closes the inline elapsed-time editor on a click anywhere outside
+        // it. Buttons/TextFields/Pickers claim taps that land on them, so
+        // this only ever fires for clicks that don't hit an actual control
+        // (background, padding, plain text) — exactly "click outside."
+        // contentShape is required: without it, the empty/text areas of
+        // this VStack aren't hit-testable at all, so no tap would land here.
+        .contentShape(Rectangle())
+        .onTapGesture {
+            editingTimeEntryId = nil
+        }
         .onAppear {
             Task { await store.refreshOnOpen() }
             focusTarget = .container
@@ -81,7 +96,8 @@ struct ContentView: View {
             if let entries = store.state?.entries, !entries.isEmpty {
                 VStack(alignment: .leading, spacing: 8) {
                     ForEach(entries) { e in
-                        EntryRow(store: store, entry: e, editingEntryId: $editingEntryId, focusTarget: $focusTarget)
+                        EntryRow(store: store, entry: e, editingEntryId: $editingEntryId,
+                                editingTimeEntryId: $editingTimeEntryId, focusTarget: $focusTarget)
                     }
                 }
             } else {
@@ -123,13 +139,14 @@ struct EntryRow: View {
     @Bindable var store: TimerStore
     let entry: Entry
     @Binding var editingEntryId: Int?
+    @Binding var editingTimeEntryId: Int?
     @FocusState.Binding var focusTarget: FocusTarget?
 
-    @State private var editingTime = false
     @State private var timeDraft = ""
     @State private var confirmingDelete = false
 
     private var editing: Bool { editingEntryId == entry.id }
+    private var editingTime: Bool { editingTimeEntryId == entry.id }
     private var canEditTime: Bool { !entry.running && !entry.locked }
 
     var body: some View {
@@ -152,21 +169,48 @@ struct EntryRow: View {
         // or becomes locked elsewhere while it's open, close it rather than
         // let a stale edit submit against the new state.
         .onChange(of: canEditTime) { _, canEdit in
-            if !canEdit { editingTime = false }
+            if !canEdit, editingTime { editingTimeEntryId = nil }
+        }
+        // Belt-and-suspenders alongside ContentView's tap-outside catcher:
+        // covers focus moving off this field for reasons that aren't a
+        // plain click (e.g. Tab to another field).
+        .onChange(of: focusTarget) { _, newValue in
+            if editingTime, newValue != .rowTime(entry.id) {
+                editingTimeEntryId = nil
+            }
         }
         // If this entry is deleted while its edit form is open, ForEach
-        // removes this view — reset editingEntryId so a dangling reference
-        // doesn't permanently suppress the bottom error banner for the rest
-        // of the session (its suppression check compares against this id).
+        // removes this view — reset editingEntryId/editingTimeEntryId so a
+        // dangling reference doesn't permanently suppress the bottom error
+        // banner, or keep a since-removed row's editor "open" forever.
         .onDisappear {
             if editing { editingEntryId = nil }
+            if editingTime { editingTimeEntryId = nil }
         }
     }
 
     private var row: some View {
         HStack(spacing: 8) {
-            // Start/stop toggle (hidden for locked entries; a lock icon
-            // stands in so it's clear why there are no controls).
+            HStack(spacing: 4) {
+                // Clear circle (not just omitted) when stopped, so the name
+                // doesn't shift over when the dot appears/disappears on
+                // start/stop.
+                if entry.running {
+                    Circle().fill(.green).frame(width: 6, height: 6)
+                } else {
+                    Color.clear.frame(width: 6, height: 6)
+                }
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(entry.projectName)
+                    Text(entry.taskTypeName).font(.caption).foregroundStyle(.secondary)
+                }
+            }
+
+            Spacer()
+
+            // Start/stop toggle, right next to the elapsed time it controls
+            // (hidden for locked entries; a lock icon stands in so it's
+            // clear why there are no controls).
             if entry.locked {
                 Image(systemName: "lock.fill").foregroundStyle(.secondary)
             } else {
@@ -179,15 +223,8 @@ struct EntryRow: View {
                     Image(systemName: entry.running ? "stop.fill" : "play.fill")
                 }
                 .buttonStyle(.plain)
-                .foregroundStyle(entry.running ? .red : .green)
+                .foregroundStyle(.secondary)
             }
-
-            VStack(alignment: .leading, spacing: 1) {
-                Text(entry.projectName)
-                Text(entry.taskTypeName).font(.caption).foregroundStyle(.secondary)
-            }
-
-            Spacer()
 
             // Click-to-edit elapsed (stopped, unlocked only).
             if editingTime {
@@ -196,10 +233,13 @@ struct EntryRow: View {
                     .frame(width: 60)
                     .monospacedDigit()
                     .focused($focusTarget, equals: .rowTime(entry.id))
-                    .onExitCommand { focusTarget = .container }
+                    .onExitCommand {
+                        focusTarget = .container
+                        editingTimeEntryId = nil
+                    }
                     .onSubmit {
                         Task { await store.setTime(id: entry.id, timeHM: timeDraft) }
-                        editingTime = false
+                        editingTimeEntryId = nil
                     }
             } else {
                 let label = Text(TimerStore.hm(store.liveElapsed(entry)))
@@ -208,7 +248,7 @@ struct EntryRow: View {
                 if canEditTime {
                     Button {
                         timeDraft = TimerStore.hm(store.liveElapsed(entry))
-                        editingTime = true
+                        editingTimeEntryId = entry.id
                         focusTarget = .rowTime(entry.id)
                     } label: { label }
                     .buttonStyle(.plain)
@@ -337,7 +377,10 @@ struct AddEntryForm: View {
 }
 struct ErrorBanner: View {
     let message: String
-    var onDismiss: () -> Void
+    // nil hides the dismiss button entirely — used for connectivity errors,
+    // which auto-clear on their own once the server is reachable again and
+    // shouldn't be dismissable in the meantime (see TimerStore.errorIsConnectivity).
+    var onDismiss: (() -> Void)?
 
     var body: some View {
         HStack(alignment: .top, spacing: 6) {
@@ -347,11 +390,13 @@ struct ErrorBanner: View {
                 .font(.callout)
                 .fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: .infinity, alignment: .leading)
-            Button(action: onDismiss) {
-                Image(systemName: "xmark.circle.fill")
+            if let onDismiss {
+                Button(action: onDismiss) {
+                    Image(systemName: "xmark.circle.fill")
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(.secondary)
             }
-            .buttonStyle(.plain)
-            .foregroundStyle(.secondary)
         }
         .padding(8)
         .background(.orange.opacity(0.12), in: RoundedRectangle(cornerRadius: 6))
@@ -409,7 +454,7 @@ struct EntryEditForm: View {
                 .focused($focusTarget, equals: .rowEditNotes(entry.id))
                 .onExitCommand { focusTarget = .container }
             if let msg = store.errorMessage, store.errorEntryId == entry.id {
-                ErrorBanner(message: msg) { store.dismissError() }
+                ErrorBanner(message: msg, onDismiss: store.errorIsConnectivity ? nil : { store.dismissError() })
             }
             HStack {
                 Spacer()
