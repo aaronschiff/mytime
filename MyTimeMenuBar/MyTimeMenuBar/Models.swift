@@ -2,7 +2,7 @@ import Foundation
 
 enum AppDefaults {
     /// Fallback server URL when nothing has been saved to UserDefaults yet.
-    static let serverBaseURL = "http://bbbee.local:8000"
+    static let serverBaseURL = "http://mytime.local:8000"
 }
 
 struct ProjectRef: Codable, Identifiable, Hashable {
