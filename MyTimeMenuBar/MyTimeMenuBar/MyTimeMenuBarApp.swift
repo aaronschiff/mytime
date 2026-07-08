@@ -21,13 +21,22 @@ struct MyTimeMenuBarApp: App {
                     store.setBaseURL(newValue)
                 }
         } label: {
-            HStack(spacing: 4) {
+            HStack(spacing: 8) {
                 statusIcon
-                Text(store.menuBarTimeText).monospacedDigit()
+                Text(store.menuBarTimeText).monospacedDigit().offset(y: 2)
             }
         }
         .menuBarExtraStyle(.window)
     }
+
+    /// Menu bar text renders at the system menu font's default point size
+    /// (13pt); the status icons are sized relative to that so "N% smaller"
+    /// tweaks have a stable baseline to shrink from.
+    private static let baseIconPointSize: CGFloat = 13
+    /// Running dot (circle.fill): 30% smaller than the text baseline.
+    private static let runningIconPointSize = baseIconPointSize * 0.7
+    /// Idle square (stop.fill): 10% smaller than the text baseline.
+    private static let idleIconPointSize = baseIconPointSize * 0.9
 
     /// SwiftUI's Image(systemName:) + .foregroundStyle cannot color a symbol
     /// inside a MenuBarExtra label — MenuBarExtra always renders it as a
@@ -39,14 +48,24 @@ struct MyTimeMenuBarApp: App {
     /// genuine color; the idle icon (a stop square) stays a plain template
     /// image so it keeps auto-adapting to the menu bar's light/dark
     /// appearance and highlight state.
-    private var statusIcon: Image {
-        guard store.isRunning else {
-            return Image(systemName: store.menuBarSymbol)
+    private var statusIcon: some View {
+        let image: Image
+        if store.isRunning {
+            let sizeConfig = NSImage.SymbolConfiguration(pointSize: Self.runningIconPointSize, weight: .regular)
+            let colorConfig = NSImage.SymbolConfiguration(paletteColors: [.systemGreen])
+            let config = sizeConfig.applying(colorConfig)
+            let nsImage = NSImage(systemSymbolName: store.menuBarSymbol, accessibilityDescription: nil)?
+                .withSymbolConfiguration(config)
+            nsImage?.isTemplate = false
+            image = Image(nsImage: nsImage ?? NSImage())
+        } else {
+            image = Image(systemName: store.menuBarSymbol)
         }
-        let config = NSImage.SymbolConfiguration(paletteColors: [.systemGreen])
-        let nsImage = NSImage(systemSymbolName: store.menuBarSymbol, accessibilityDescription: nil)?
-            .withSymbolConfiguration(config)
-        nsImage?.isTemplate = false
-        return Image(nsImage: nsImage ?? NSImage())
+        // The .font() modifier only affects the plain-systemName idle image;
+        // the running image already has its size baked in via
+        // SymbolConfiguration(pointSize:) above, so this call is a no-op for
+        // it — applied unconditionally just to keep both branches the same
+        // concrete `some View` return type.
+        return image.font(.system(size: store.isRunning ? Self.runningIconPointSize : Self.idleIconPointSize))
     }
 }
