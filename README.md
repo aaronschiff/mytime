@@ -87,6 +87,8 @@ sudo systemctl enable --now mytime
 
 The app binds to all interfaces on port 8000 by default. No authentication layer — intended for trusted LAN use only. Restrict access with a firewall if needed (e.g. `ufw allow from 192.168.0.0/16 to any port 8000`). Served over plain HTTP (no TLS) — browsers show a "Not Secure" indicator; this is a deliberate tradeoff for a LAN-only single-user app (getting a trusted cert for a `.local` hostname isn't practical without extra infra like Tailscale or a reverse proxy + local CA), not an oversight.
 
+**Remote access:** If the deployment host runs [Tailscale](https://tailscale.com), `tailscale serve` can expose the app over HTTPS on a tailnet-only address (not the public internet), gated by tailnet device membership rather than the LAN firewall rule above. This also sidesteps the "Not Secure" warning above, since Tailscale issues a real, auto-renewing HTTPS certificate for tailnet hostnames. No application changes are required — point `tailscale serve` at the existing `localhost:8000` app. Real hostnames/ports for this deployment are not committed to this public repo; see the gitignored `deploy/bbbee.md` for actual values used in production.
+
 ### Backups
 
 `deploy/backup.py` (run nightly via `deploy/mytime-backup.{service,timer}`) takes a **transactionally consistent** snapshot using SQLite's online-backup API (safe to run while the app writes; handles WAL correctly — a plain file copy would not), **verifies** it (`PRAGMA integrity_check` + schema query) and exits non-zero discarding any bad file, then applies 28-day tiered retention. Set via env:
