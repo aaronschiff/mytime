@@ -243,18 +243,22 @@ final class TimerStore {
     private static let notifyThresholdSeconds = 14400   // 4 hours
 
     /// Fire a native notification once per running-timer run (deduped on `since`)
-    /// when elapsed ≥ 4 h. Because the sync loop runs even with the dropdown
-    /// closed, this fires in the background too. A no-op if authorization was
-    /// denied.
+    /// when the *current continuous run* — time since this `since`, not the
+    /// entry's cumulative total across earlier stop/restart cycles — reaches
+    /// 4 h. Matches the web app's reference behavior (timer-tick.js's
+    /// `_checkNotification`, which only ever looks at `now - since`). Because
+    /// the sync loop runs even with the dropdown closed, this fires in the
+    /// background too. A no-op if authorization was denied.
     private func checkNotification(_ e: Entry, elapsed: Int) {
         guard let since = e.since else { return }
-        guard elapsed >= Self.notifyThresholdSeconds else { return }
+        let continuousElapsed = elapsed - e.baseSeconds
+        guard continuousElapsed >= Self.notifyThresholdSeconds else { return }
         guard notifiedSince != since else { return }
         notifiedSince = since
 
         let content = UNMutableNotificationContent()
         content.title = "Timer still running"
-        content.body = "\(e.projectName) has been running for \(Self.hoursMinutes(elapsed))"
+        content.body = "\(e.projectName) has been running for \(Self.hoursMinutes(continuousElapsed))"
         let request = UNNotificationRequest(identifier: UUID().uuidString,
                                             content: content, trigger: nil)
         UNUserNotificationCenter.current().add(request)
