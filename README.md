@@ -319,6 +319,7 @@ A single `@media (max-width: 600px)` block in `app.css` reflows the app for phon
 - **Tables:** any table with `class="responsive"` restacks each row into a labelled card (`<td data-label="…">` supplies the label via a `::before` pseudo-element instead of the hidden `<thead>`). Applied to the main data tables (projects, clients, time entries, invoices list, task types, today's timers). The two narrower totals/build tables (`invoice_view.html`, `invoice_build.html`) keep their normal tabular layout and are wrapped in `.table-scroll` instead, since stacking a 4-column money table reads worse than letting it scroll.
 - **Touch targets:** `button`/`input`/`select`/`textarea` get `min-height: 2.5rem` and `font-size: 16px` — the 16px is required, not cosmetic: iOS Safari auto-zooms the page on focus if an input's font-size is below 16px.
 - **Inputs:** capped to `max-width: 100%` so template-level inline `style="width:20em"` etc. can't force horizontal overflow.
+- **Button appearance:** the base `button` rule (not just the mobile media query) sets `-webkit-appearance:none; appearance:none;` plus an explicit `color`. Without this, mobile Safari/Chrome overlay their native button chrome (a gradient/tint) on top of the custom `background`, which washed out enabled buttons (e.g. "Add & start" on the Today page looked disabled even though it wasn't) and made button text colour inconsistent between mobile and desktop.
 
 ## Key constraints
 
