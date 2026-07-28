@@ -23,7 +23,8 @@
   <p><label>Date<br><input type="date" name="entry_date" required id="entry-date"
        value="{{ entry.entry_date if entry else today }}"></label></p>
   <p><label>Time (hh:mm)<br><input type="text" name="duration" id="entry-duration"
-       value="{{ entry.seconds | hm if entry else '00:00' }}" placeholder="hh:mm" size="6" style="width:7em"></label></p>
+       value="{{ duration_prefill or (entry.seconds | hm if entry else '00:00') }}" placeholder="hh:mm" size="6" style="width:7em"></label></p>
+  <input type="hidden" name="duration_prefill" value="{{ duration_prefill or '' }}">
   <p><label>Notes<br><textarea name="notes" style="width:100%" rows="3">{{ entry.notes if entry and entry.notes else '' }}</textarea></label></p>
   <button type="submit" class="btn-save">Save</button>
   <button type="button" class="btn-cancel" onclick='location.href={{ (from_page or "/time") | tojson }}'>Cancel</button>

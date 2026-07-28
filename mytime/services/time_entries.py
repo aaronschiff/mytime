@@ -1,7 +1,8 @@
-from datetime import date
+from datetime import date, datetime
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from mytime import clock
 from mytime.models import TimeEntry
 from mytime.services import guards
 
@@ -46,13 +47,21 @@ def create_entry(session, project_id, task_type_id, entry_date, seconds, notes) 
     return e
 
 
-def update_entry(session, entry_id, project_id, task_type_id, entry_date, seconds, notes) -> TimeEntry:
+def update_entry(session, entry_id, project_id, task_type_id, entry_date, seconds, notes,
+                 at: datetime | None = None) -> TimeEntry:
+    """seconds=None leaves the entry's time (and any live run) completely
+    untouched. A running entry is never stopped by an edit: a submitted
+    duration is "total elapsed as of now", so the run restarts at `at` —
+    keeping the old running_since would double-count the current run."""
     e = get_entry(session, entry_id)
     guards.ensure_unlocked(e)
     e.project_id = project_id
     e.task_type_id = task_type_id
     e.entry_date = entry_date
-    e.seconds = int(seconds)
+    if seconds is not None:
+        e.seconds = int(seconds)
+        if e.running_since is not None:
+            e.running_since = at if at is not None else clock.now()
     e.notes = notes or None
     session.commit()
     return e

@@ -236,17 +236,51 @@ def test_edit_updates_stopped_entry(client):
     assert e["notes"] == "new"
 
 
-def test_edit_auto_stops_running_entry(client):
+def test_edit_keeps_running_entry_running(client):
     _setup(client)
     client.post("/today/add", data={"project_id": "1", "task_type_id": "1", "notes": ""},
                 follow_redirects=False)
+    before = client.get("/api/today").json()["entries"][0]
     r = client.post("/api/today/1/edit", json={
         "project_id": 1, "task_type_id": 1, "duration": "1:00", "notes": "edited",
     })
     assert r.status_code == 200
     e = r.json()["entries"][0]
-    assert e["running"] is False
+    assert e["running"] is True
     assert e["base_seconds"] == 3600
+    # The edited duration is "total as of now" — the run restarts from the edit.
+    assert e["since"] is not None and e["since"] >= before["since"]
+
+
+def test_edit_without_duration_leaves_time_untouched(client):
+    _setup(client)
+    client.post("/settings/task-types", data={"name": "Design"}, follow_redirects=False)
+    client.post("/api/today/entries", json={
+        "project_id": 1, "task_type_id": 1, "notes": "old", "start": False, "duration": "2:00",
+    })
+    r = client.post("/api/today/1/edit", json={
+        "project_id": 1, "task_type_id": 2, "notes": "new",
+    })
+    assert r.status_code == 200
+    e = r.json()["entries"][0]
+    assert e["base_seconds"] == 2 * 3600
+    assert e["task_type_id"] == 2
+    assert e["notes"] == "new"
+
+
+def test_edit_without_duration_keeps_running_since_unchanged(client):
+    _setup(client)
+    client.post("/today/add", data={"project_id": "1", "task_type_id": "1", "notes": ""},
+                follow_redirects=False)
+    before = client.get("/api/today").json()["entries"][0]
+    r = client.post("/api/today/1/edit", json={
+        "project_id": 1, "task_type_id": 1, "notes": "edited",
+    })
+    assert r.status_code == 200
+    e = r.json()["entries"][0]
+    assert e["running"] is True
+    assert e["since"] == before["since"]
+    assert e["base_seconds"] == before["base_seconds"]
 
 
 def test_edit_bad_duration_is_400(client):

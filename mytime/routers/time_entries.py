@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from mytime.clock import now, today
 from mytime.db import get_session
-from mytime.format import parse_duration
+from mytime.format import fmt_hm, parse_duration
 from mytime.services import time_entries as te, projects, task_types, timers
 from mytime.services.guards import EntryLockedError
 from mytime.templating import templates
@@ -113,14 +113,12 @@ def edit_page(entry_id: int, request: Request, from_page: str = "",
     project = projects.get_project(session, entry.project_id)
     if project.status != "active":
         return Response("Time entries for archived projects cannot be edited.", status_code=403)
-    if entry.running_since is not None:
-        timers.stop_timer(session, entry_id, now())
-        entry = te.get_entry(session, entry_id)
     ps, ts, _, _ = _lookup(session)
     return templates.TemplateResponse(request, "time_entry_form.html", {
         "entry": entry, "all_projects": ps, "task_types": ts,
         "today": today().isoformat(),
         "from_page": from_page or "/time",
+        "duration_prefill": fmt_hm(timers.live_elapsed(entry, now())),
     })
 
 
@@ -129,21 +127,29 @@ def update(
     entry_id: int, request: Request,
     project_id: int = Form(...), task_type_id: int = Form(...),
     entry_date: date = Form(...), duration: str = Form("00:00"),
-    notes: str = Form(""), from_page: str = Form(""),
+    duration_prefill: str = Form(""), notes: str = Form(""), from_page: str = Form(""),
     session: Session = Depends(get_session),
 ):
-    seconds = parse_duration(duration)
-    if seconds is None:
-        entry = te.get_entry(session, entry_id)
-        ps, ts, _, _ = _lookup(session)
-        return templates.TemplateResponse(request, "time_entry_form.html", {
-            "entry": entry, "all_projects": ps, "task_types": ts,
-            "today": today().isoformat(),
-            "from_page": from_page or "/time",
-            "error": _DURATION_ERROR,
-        }, status_code=400)
+    if duration_prefill and duration.strip() == duration_prefill.strip():
+        # Untouched duration field: leave the entry's time (and any live run)
+        # exactly as it is, rather than rewriting it with the minute-rounded
+        # display value the form was prefilled with.
+        seconds = None
+    else:
+        seconds = parse_duration(duration)
+        if seconds is None:
+            entry = te.get_entry(session, entry_id)
+            ps, ts, _, _ = _lookup(session)
+            return templates.TemplateResponse(request, "time_entry_form.html", {
+                "entry": entry, "all_projects": ps, "task_types": ts,
+                "today": today().isoformat(),
+                "from_page": from_page or "/time",
+                "error": _DURATION_ERROR,
+                "duration_prefill": duration_prefill,
+            }, status_code=400)
     try:
-        te.update_entry(session, entry_id, project_id, task_type_id, entry_date, seconds, notes)
+        te.update_entry(session, entry_id, project_id, task_type_id, entry_date, seconds, notes,
+                        at=now())
     except EntryLockedError:
         return Response("This time entry is locked to an invoice and cannot be edited.", status_code=403)
     return RedirectResponse(from_page or "/time", status_code=303)

@@ -132,7 +132,10 @@ def set_time_entry(entry_id: int, body: SetTimeBody, session: Session = Depends(
 class EditEntryBody(BaseModel):
     project_id: int
     task_type_id: int
-    duration: str
+    # None means "leave the entry's time untouched" — the client omits the
+    # field when the user didn't change the prefilled duration, so an edit of
+    # notes/project alone never rewrites time or restarts a live run.
+    duration: str | None = None
     notes: str = ""
 
 
@@ -144,14 +147,14 @@ def edit_entry(entry_id: int, body: EditEntryBody, session: Session = Depends(ge
     project = projects.get_project(session, entry.project_id)
     if project.status != "active":
         return _error(403, "Time entries for archived projects cannot be edited.")
-    seconds = parse_duration(body.duration)
-    if seconds is None:
-        return _error(400, _DURATION_ERROR)
+    seconds = None
+    if body.duration is not None:
+        seconds = parse_duration(body.duration)
+        if seconds is None:
+            return _error(400, _DURATION_ERROR)
     try:
-        if entry.running_since is not None:
-            timers.stop_timer(session, entry_id, now())
         te.update_entry(session, entry_id, body.project_id, body.task_type_id,
-                        entry.entry_date, seconds, body.notes)
+                        entry.entry_date, seconds, body.notes, at=now())
     except EntryLockedError:
         return _error(403, "This time entry is locked to an invoice.")
     return _today_state(session)

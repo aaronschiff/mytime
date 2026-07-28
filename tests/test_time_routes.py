@@ -18,6 +18,65 @@ def test_create_entry_and_list(client):
     assert client.get("/projects/1").text.count("01:30") >= 1
 
 
+def _entry(client, entry_id=1):
+    from mytime.main import app
+    from mytime.db import get_session
+    from mytime.models import TimeEntry
+    with next(app.dependency_overrides[get_session]()) as s:
+        e = s.get(TimeEntry, entry_id)
+        return e.seconds, e.running_since
+
+
+def _set_seconds(client, entry_id, seconds):
+    from mytime.main import app
+    from mytime.db import get_session
+    from mytime.models import TimeEntry
+    with next(app.dependency_overrides[get_session]()) as s:
+        s.get(TimeEntry, entry_id).seconds = seconds
+        s.commit()
+
+
+def test_edit_page_does_not_stop_running_timer(client):
+    _project(client)
+    client.post("/today/add", data={"project_id": "1", "task_type_id": "1", "notes": ""},
+                follow_redirects=False)
+    assert client.get("/time/1/edit").status_code == 200
+    _, running_since = _entry(client)
+    assert running_since is not None
+
+
+def test_edit_post_keeps_timer_running_with_new_duration(client):
+    _project(client)
+    client.post("/today/add", data={"project_id": "1", "task_type_id": "1", "notes": ""},
+                follow_redirects=False)
+    _, since_before = _entry(client)
+    r = client.post("/time/1/edit", data={"project_id": "1", "task_type_id": "1",
+        "entry_date": clock.today().isoformat(), "duration": "2:00",
+        "duration_prefill": "00:00", "notes": ""}, follow_redirects=False)
+    assert r.status_code == 303
+    seconds, running_since = _entry(client)
+    assert seconds == 2 * 3600
+    # Still running, and the run restarts at the edit: the new duration is
+    # "total as of now", so keeping the old running_since would double-count.
+    assert running_since is not None
+    assert running_since > since_before
+
+
+def test_edit_post_unchanged_duration_leaves_time_untouched(client):
+    _project(client)
+    client.post("/today/add", data={"project_id": "1", "task_type_id": "1", "notes": ""},
+                follow_redirects=False)
+    _set_seconds(client, 1, 7223)  # displays as 02:00 — a rewrite would floor it to 7200
+    _, since_before = _entry(client)
+    r = client.post("/time/1/edit", data={"project_id": "1", "task_type_id": "1",
+        "entry_date": clock.today().isoformat(), "duration": "02:00",
+        "duration_prefill": "02:00", "notes": "note change only"}, follow_redirects=False)
+    assert r.status_code == 303
+    seconds, running_since = _entry(client)
+    assert seconds == 7223
+    assert running_since == since_before
+
+
 def test_edit_locked_entry_returns_403(client):
     _project(client)
     client.post("/time/new", data={"project_id": "1", "task_type_id": "1",

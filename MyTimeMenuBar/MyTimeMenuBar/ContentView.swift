@@ -413,6 +413,12 @@ struct EntryEditForm: View {
     @State private var taskTypeId: Int
     @State private var duration: String
     @State private var notes: String
+    // What the duration field was prefilled with. If it's still this exact
+    // value at Save, the duration is omitted from the request entirely so the
+    // backend leaves the entry's time (and any live run) untouched — the
+    // prefill is a minute-rounded snapshot taken when the form opened, and
+    // writing it back would discard time accrued since then.
+    private let durationPrefill: String
 
     init(store: TimerStore, entry: Entry, focusTarget: FocusState<FocusTarget?>.Binding, onDone: @escaping () -> Void) {
         self.store = store
@@ -421,11 +427,9 @@ struct EntryEditForm: View {
         self.onDone = onDone
         _projectId = State(initialValue: entry.projectId)
         _taskTypeId = State(initialValue: entry.taskTypeId)
-        // Live elapsed, not entry.baseSeconds — the backend stops a running
-        // entry and overwrites its total from this value unconditionally, so
-        // prefilling from the stale stored base would silently discard all
-        // the time it accumulated while running.
-        _duration = State(initialValue: TimerStore.hm(store.liveElapsed(entry)))
+        let prefill = TimerStore.hm(store.liveElapsed(entry))
+        durationPrefill = prefill
+        _duration = State(initialValue: prefill)
         _notes = State(initialValue: entry.notes)
     }
 
@@ -464,9 +468,11 @@ struct EntryEditForm: View {
                 }
                 Button("Save") {
                     Task {
+                        let trimmed = duration.trimmingCharacters(in: .whitespaces)
                         await store.editEntry(id: entry.id, projectId: projectId,
                                               taskTypeId: taskTypeId,
-                                              duration: duration, notes: notes)
+                                              duration: trimmed == durationPrefill ? nil : trimmed,
+                                              notes: notes)
                         if store.errorMessage == nil { onDone() }
                     }
                 }

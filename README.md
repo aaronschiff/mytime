@@ -144,6 +144,8 @@ The app is installable as a chrome-less app icon via `mytime/static/manifest.jso
 
 Live elapsed = `seconds + (now - running_since)`. The `timers.live_elapsed()` service function handles this. Stopping a timer flushes the running delta into `seconds` and clears `running_since`.
 
+**Edits never stop a running timer** (fixed 2026-07-28 — previously the web edit page stopped the timer as a GET side effect, and the API edit auto-stopped, both silent undercount sources). `time_entries.update_entry` takes `seconds=None` to mean "leave time — and any live run — completely untouched"; when a duration *is* submitted for a running entry, it's treated as "total elapsed as of now": `seconds` is set and the run restarts (`running_since = now`), since keeping the old start would double-count. Both edit forms (web `time_entry_form.html` via a hidden `duration_prefill` field; menubar `EntryEditForm` via a remembered prefill) detect an untouched duration field and submit "no time change" — so editing notes/project alone never rewrites the exact stored seconds with the minute-rounded display value.
+
 ### Connection hardening
 
 `db.configure_engine()` registers a `connect` listener that runs `PRAGMA busy_timeout=5000` (wait for locks instead of failing with "database is locked") and `PRAGMA journal_mode=WAL` (concurrent reads during writes, more crash-resilient than the default rollback journal) on every connection. WAL creates `mytime.db-wal` / `mytime.db-shm` sidecar files; the deploy rsync excludes `mytime.db*` so they're never deleted out from under the running app, and backups use the SQLite online-backup API (which handles WAL correctly — a plain file copy would not).
@@ -202,7 +204,7 @@ mytime/
     icons/          # apple-touch-icon.png, icon-192.png, icon-512.png, favicon.png
 tests/
   conftest.py       # In-memory SQLite fixture + TestClient with session override
-  test_*.py         # 123 tests, all passing (includes test_api_today_routes.py)
+  test_*.py         # 128 tests, all passing (includes test_api_today_routes.py)
 deploy/
   mytime.service    # systemd unit (generic /opt/mytime path)
   backup.py         # Consistent + verified DB snapshot; 28-day tiered retention; optional off-site push
@@ -276,7 +278,7 @@ The today view wraps the timer list in `<div id="timers">`. Start/stop/set-time/
 | POST | `/api/today/{id}/start` | Start (stops any other running timer — same server-enforced single-running-timer invariant as the web app) |
 | POST | `/api/today/{id}/stop` | Stop |
 | POST | `/api/today/{id}/set-time` | Quick inline elapsed-time edit (stopped entries only) |
-| POST | `/api/today/{id}/edit` | Full edit: project/task type/duration/notes — no `entry_date` (moving an entry to a different day stays a Time-page-only, web-app action) |
+| POST | `/api/today/{id}/edit` | Full edit: project/task type/duration/notes — no `entry_date` (moving an entry to a different day stays a Time-page-only, web-app action). `duration` is optional: omitted = leave the entry's time (and any live run) untouched; present on a running entry = "total as of now", run restarts. Never stops a running timer. |
 | DELETE | `/api/today/{id}` | Delete |
 
 Every mutation endpoint — including create and delete — returns the same full `GET /api/today` shape on success, so a client can always replace its local state wholesale from any response rather than tracking a separate shape per action. Errors are always `{"error": "..."}` (400 bad duration, 403 locked entry/archived project, 404 unknown id) via a shared `_error()` helper — never FastAPI's default `{"detail": ...}` shape — with one accepted asymmetry: a malformed/missing JSON body field (e.g. non-integer `project_id`) falls through to FastAPI's own default 422 response, not the router's own 400/`{"error"}` shape (a documented, deliberate scope cut, not a bug — worth noting for the eventual Swift client).

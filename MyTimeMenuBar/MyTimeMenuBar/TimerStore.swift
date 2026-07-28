@@ -154,7 +154,7 @@ final class TimerStore {
         await perform(entryId: id) { try await $0.setTime(id: id, timeHM: timeHM) }
     }
     func editEntry(id: Int, projectId: Int, taskTypeId: Int,
-                   duration: String, notes: String) async {
+                   duration: String?, notes: String) async {
         await perform(entryId: id) { try await $0.edit(id: id, projectId: projectId, taskTypeId: taskTypeId,
                                           duration: duration, notes: notes) }
     }

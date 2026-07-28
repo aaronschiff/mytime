@@ -50,12 +50,15 @@ struct APIClient {
                           body: ["time_hm": timeHM])
     }
 
+    /// Pass duration: nil to leave the entry's time untouched — the backend
+    /// only rewrites time (and restarts a live run) when the field is present.
     func edit(id: Int, projectId: Int, taskTypeId: Int,
-              duration: String, notes: String) async throws -> TodayState {
-        try await request("/api/today/\(id)/edit", method: "POST", body: [
-            "project_id": projectId, "task_type_id": taskTypeId,
-            "duration": duration, "notes": notes,
-        ])
+              duration: String?, notes: String) async throws -> TodayState {
+        var body: [String: Any] = [
+            "project_id": projectId, "task_type_id": taskTypeId, "notes": notes,
+        ]
+        if let duration { body["duration"] = duration }
+        return try await request("/api/today/\(id)/edit", method: "POST", body: body)
     }
 
     func delete(id: Int) async throws -> TodayState {
