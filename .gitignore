@@ -14,3 +14,4 @@ docs/superpowers/
 deploy/deploy-bbbee.sh
 deploy/bbbee.md
 MyTimeMenuBar/build/
+*.xcuserstate
