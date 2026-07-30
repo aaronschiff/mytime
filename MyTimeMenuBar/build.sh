@@ -15,10 +15,15 @@ xcodebuild -project MyTimeMenuBar.xcodeproj \
   -derivedDataPath build \
   build
 
-APP_PATH="build/Build/Products/$CONFIGURATION/MyTimeMenuBar.app"
+BUILT_APP_PATH="build/Build/Products/$CONFIGURATION/MyTimeMenuBar.app"
+INSTALLED_APP_PATH="/Applications/MyTimeMenuBar.app"
 
 # Kill any already-running instance so testing always picks up the new build.
 killall MyTimeMenuBar 2>/dev/null || true
 
-echo "Launching $APP_PATH"
-open "$APP_PATH"
+echo "Installing to $INSTALLED_APP_PATH"
+rm -rf "$INSTALLED_APP_PATH"
+ditto "$BUILT_APP_PATH" "$INSTALLED_APP_PATH"
+
+echo "Launching $INSTALLED_APP_PATH"
+open "$INSTALLED_APP_PATH"
