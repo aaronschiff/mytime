@@ -124,13 +124,13 @@ struct ContentView: View {
         }
     }
 
-    /// Opens the web app's Today page in the user's default browser, using
+    /// Opens the web app's Overview page in the user's default browser, using
     /// the same server URL the menubar app itself talks to (Settings).
     private func openWebApp() {
         let base = UserDefaults.standard.string(forKey: "serverBaseURL") ?? AppDefaults.serverBaseURL
         var trimmed = base.trimmingCharacters(in: .whitespaces)
         while trimmed.hasSuffix("/") { trimmed.removeLast() }
-        guard let url = URL(string: trimmed + "/today") else { return }
+        guard let url = URL(string: trimmed + "/overview") else { return }
         NSWorkspace.shared.open(url)
     }
 }
