@@ -130,7 +130,7 @@ struct ContentView: View {
         let base = UserDefaults.standard.string(forKey: "serverBaseURL") ?? AppDefaults.serverBaseURL
         var trimmed = base.trimmingCharacters(in: .whitespaces)
         while trimmed.hasSuffix("/") { trimmed.removeLast() }
-        guard let url = URL(string: trimmed + "/overview") else { return }
+        guard let url = URL(string: trimmed) else { return }
         NSWorkspace.shared.open(url)
     }
 }
