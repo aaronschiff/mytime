@@ -19,6 +19,9 @@
     {% endif %}
   </div>
   {% if s.project.budget is not none %}
+    {% for frac in [0.25, 0.5, 0.75] %}
+      <div class="budget-tick" style="left:{{ (s.project.budget | float * frac / scale * 100) if scale else 0 }}%"></div>
+    {% endfor %}
     <div class="budget-line" style="left:{{ (s.project.budget | float / scale * 100) if scale else 0 }}%"></div>
   {% endif %}
 </div>
@@ -58,6 +61,9 @@
     {% endif %}
   </div>
   {% if s.project.budget is not none %}
+    {% for frac in [0.25, 0.5, 0.75] %}
+      <div class="budget-tick" style="left:{{ (s.project.budget | float * frac / scale * 100) if scale else 0 }}%"></div>
+    {% endfor %}
     <div class="budget-line" style="left:{{ (s.project.budget | float / scale * 100) if scale else 0 }}%"></div>
   {% endif %}
 </div>
